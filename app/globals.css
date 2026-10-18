@@ -1,0 +1,124 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+  --background: #060914;
+  --foreground: #e8eaf3;
+  --panel: rgba(15, 19, 36, 0.78);
+  --line: rgba(166, 174, 214, 0.12);
+  --muted: #929ab4;
+  --accent: #9b8cff;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  scroll-behavior: smooth;
+  scrollbar-color: rgba(155, 140, 255, 0.45) rgba(8, 11, 24, 0.7);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse at 76% -18%, rgba(91, 62, 197, 0.23), transparent 37rem),
+    radial-gradient(ellipse at 8% 34%, rgba(15, 125, 148, 0.09), transparent 32rem),
+    linear-gradient(145deg, #080b18 0%, #060914 54%, #090b19 100%);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  color: #fff;
+  background: rgba(139, 115, 255, 0.55);
+}
+
+a {
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+:focus-visible {
+  outline: 2px solid rgba(167, 139, 250, 0.9);
+  outline-offset: 3px;
+}
+
+.card {
+  position: relative;
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(ellipse at 100% 0%, rgba(142, 112, 255, 0.055), transparent 45%),
+    linear-gradient(145deg, rgba(19, 24, 44, 0.88), rgba(11, 15, 30, 0.84));
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  backdrop-filter: blur(18px);
+}
+
+.card > header h2,
+main h2 {
+  letter-spacing: -0.035em;
+}
+
+main input:not([type="color"]),
+main select,
+main textarea {
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+main input:not([type="color"]):focus,
+main select:focus,
+main textarea:focus {
+  border-color: rgba(167, 139, 250, 0.65);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
+  outline: none;
+}
+
+main button {
+  transition: transform 160ms ease, filter 160ms ease, background-color 160ms ease;
+}
+
+main button:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+main button:active:not(:disabled) {
+  transform: translateY(1px) scale(0.99);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
