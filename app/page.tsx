@@ -28,7 +28,15 @@ export default async function HomePage() {
     const daysAway = Math.ceil((date.getTime() - todayStart.getTime()) / 86_400_000);
     return daysAway >= 0 && daysAway <= 7;
   });
-  const nextDeadline = deadlines[0];
+  const nextDeadline = deadlines.find((item) => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(item.dueDate);
+    const date = match
+      ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+      : new Date(item.dueDate);
+    return date >= todayStart;
+  }) ?? deadlines.find((item) => item.type === "Assignment");
+  const upcomingExams = deadlines.filter((item) => item.type === "Exam").slice(0, 3);
+  const upcomingAssignments = deadlines.filter((item) => item.type === "Assignment").slice(0, 3);
   const completedSessions = data.sessions.filter((session) => session.status === "completed").length;
   const nextSession = data.sessions.find((session) => session.status !== "completed") ?? null;
   const focusSuggestion = plan.suggestions[0];
@@ -129,16 +137,16 @@ export default async function HomePage() {
         <div className="card rounded-3xl p-5">
           <h3 className="text-lg font-semibold text-white">Upcoming exams</h3>
           <div className="mt-4 space-y-3">
-            {data.exams.length === 0 ? (
+            {upcomingExams.length === 0 ? (
               <p className="text-sm text-slate-400">No exam dates saved yet.</p>
             ) : (
-              data.exams.slice(0, 3).map((exam) => (
+              upcomingExams.map((exam) => (
                 <div key={exam.id} className="rounded-2xl border border-white/10 bg-slate-900/60 p-3">
                   <div className="flex items-center justify-between gap-3">
                     <strong className="text-white">{exam.title}</strong>
                     <span className="text-xs uppercase tracking-[0.2em] text-violet-300">Exam</span>
                   </div>
-                  <p className="mt-2 text-sm text-slate-300">{new Date(exam.date).toLocaleDateString()}</p>
+                  <p className="mt-2 text-sm text-slate-300">{new Date(`${exam.dueDate.slice(0, 10)}T00:00:00`).toLocaleDateString()}</p>
                 </div>
               ))
             )}
@@ -151,16 +159,16 @@ export default async function HomePage() {
             <Link href="/reminders" className="text-xs font-medium text-violet-300 hover:text-violet-200">Reminder center →</Link>
           </div>
           <div className="mt-4 space-y-3">
-            {data.assignments.filter((assignment) => !assignment.is_completed).length === 0 ? (
+            {upcomingAssignments.length === 0 ? (
               <p className="text-sm text-slate-400">No assignment deadlines saved yet.</p>
             ) : (
-              data.assignments.filter((assignment) => !assignment.is_completed).slice(0, 3).map((assignment) => (
+              upcomingAssignments.map((assignment) => (
                 <div key={assignment.id} className="rounded-2xl border border-white/10 bg-slate-900/60 p-3">
                   <div className="flex items-center justify-between gap-3">
                     <strong className="text-white">{assignment.title}</strong>
-                    <span className="text-xs uppercase tracking-[0.2em] text-amber-300">{assignment.priority}</span>
+                    <span className="text-xs uppercase tracking-[0.2em] text-amber-300">Assignment</span>
                   </div>
-                  <p className="mt-2 text-sm text-slate-300">Due {new Date(assignment.due_date).toLocaleDateString()}</p>
+                  <p className="mt-2 text-sm text-slate-300">Due {new Date(`${assignment.dueDate.slice(0, 10)}T00:00:00`).toLocaleDateString()}</p>
                 </div>
               ))
             )}
@@ -181,6 +189,7 @@ export default async function HomePage() {
               <p className="mt-2 text-sm text-slate-300">{task.reason}</p>
             </div>
           ))}
+          {plan.suggestions.length === 0 && <p className="text-sm text-slate-400">Add a course and upcoming deadline to get a study rhythm suggestion.</p>}
         </div>
       </section>
     </div>

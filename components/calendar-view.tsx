@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 type CalendarEvent = {
@@ -10,6 +10,7 @@ type CalendarEvent = {
   date: Date;
   type: "exam" | "assignment";
   priority?: string;
+  is_completed?: number | boolean;
 };
 
 function parseLocalDate(value: string) {
@@ -33,7 +34,7 @@ export default function CalendarView({
 }: {
   courses: Array<{ id: string; name: string; code: string; color: string }>;
   exams: Array<{ id: string; title: string; date: string; course_id: string; notes: string }>;
-  assignments: Array<{ id: string; title: string; due_date: string; course_id: string; priority: string }>;
+  assignments: Array<{ id: string; title: string; due_date: string; course_id: string; priority: string; is_completed?: number | boolean }>;
 }) {
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const today = new Date();
@@ -143,8 +144,8 @@ export default function CalendarView({
                 </span>
                 <span className="hidden space-y-1 sm:block">
                   {dayEvents.slice(0, 2).map((event) => (
-                    <span key={`${event.id}-${event.type}`} title={event.title} className={`block truncate rounded-md px-1.5 py-1 text-[10px] font-medium ${event.type === "exam" ? "bg-violet-500/20 text-violet-200" : "bg-amber-500/15 text-amber-100"}`}>
-                      {event.title}
+                    <span key={`${event.id}-${event.type}`} title={`${event.title}${event.is_completed ? " (completed)" : ""}`} className={`block truncate rounded-md px-1.5 py-1 text-[10px] font-medium ${event.type === "exam" ? "bg-violet-500/20 text-violet-200" : event.is_completed ? "bg-emerald-500/10 text-emerald-200 line-through" : "bg-amber-500/15 text-amber-100"}`}>
+                      {event.is_completed && <Check className="mr-1 inline h-3 w-3" aria-hidden="true" />}{event.title}
                     </span>
                   ))}
                 </span>
@@ -172,10 +173,10 @@ export default function CalendarView({
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               {selectedEvents.map((event) => (
                 <div key={`${event.id}-${event.type}`} className="flex items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
-                  <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${event.type === "exam" ? "bg-violet-400" : "bg-amber-300"}`} />
+                  <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${event.type === "exam" ? "bg-violet-400" : event.is_completed ? "bg-emerald-400" : "bg-amber-300"}`} />
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-white">{event.title}</p>
-                    <p className="mt-1 text-xs text-slate-400">{courses.find((course) => course.id === event.course_id)?.name ?? "General"} · {event.type}{event.priority ? ` · ${event.priority} priority` : ""}</p>
+                    <p className={`truncate text-sm font-medium ${event.is_completed ? "text-slate-400 line-through" : "text-white"}`}>{event.title}</p>
+                    <p className="mt-1 text-xs text-slate-400">{courses.find((course) => course.id === event.course_id)?.name ?? "General"} · {event.type}{event.priority ? ` · ${event.priority} priority` : ""}{event.is_completed ? " · completed" : ""}</p>
                   </div>
                 </div>
               ))}

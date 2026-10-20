@@ -43,9 +43,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" data-scroll-behavior="smooth" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full text-slate-100">
+        <a className="skip-link" href="#main-content">Skip to content</a>
         <div className="mx-auto flex min-h-screen max-w-[1800px] flex-col md:flex-row">
           <Sidebar />
-          <main className="min-w-0 flex-1 px-4 pb-8 pt-5 sm:px-6 md:px-8 md:py-8">{children}</main>
+          <main id="main-content" className="min-w-0 flex-1 px-4 pb-8 pt-5 sm:px-6 md:px-8 md:py-8">{children}</main>
         </div>
         <DeadlineReminders deadlines={deadlines} />
       </body>

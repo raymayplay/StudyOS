@@ -4,6 +4,7 @@ import { BellRing, CalendarDays, ChartColumnBig, Compass, LayoutDashboard, Noteb
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { logoutAction } from "@/lib/session-actions";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -58,6 +59,7 @@ export default function Sidebar() {
           Sign out
         </button>
       </form>
+      <ThemeToggle />
 
       <div className="mt-8 hidden overflow-hidden rounded-2xl border border-violet-400/15 bg-gradient-to-br from-violet-500/[0.12] via-indigo-500/[0.06] to-cyan-500/[0.08] p-4 md:block">
         <div className="mb-2 flex items-center gap-2 text-violet-200">

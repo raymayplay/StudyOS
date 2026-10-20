@@ -69,6 +69,19 @@ button:disabled {
   outline-offset: 3px;
 }
 
+.skip-link { position: absolute; left: 1rem; top: -4rem; z-index: 50; border-radius: .75rem; background: #7c3aed; padding: .75rem 1rem; color: white; }
+.skip-link:focus { top: 1rem; }
+
+html[data-theme="light"] { color-scheme: light; --foreground: #182033; --line: rgba(54, 65, 91, .18); --muted: #58647a; }
+html[data-theme="light"] body { background: linear-gradient(145deg, #f5f7ff, #edf2fa 55%, #f8faff); color: #182033; }
+html[data-theme="light"] .card { background: rgba(255,255,255,.9); box-shadow: 0 14px 40px rgba(35,48,78,.08); }
+html[data-theme="light"] aside { background: rgba(255,255,255,.92) !important; border-color: rgba(54,65,91,.15) !important; }
+html[data-theme="light"] .text-white { color: #182033 !important; }
+html[data-theme="light"] .text-slate-100, html[data-theme="light"] .text-slate-200 { color: #27334a !important; }
+html[data-theme="light"] .text-slate-300, html[data-theme="light"] .text-slate-400 { color: #58647a !important; }
+html[data-theme="light"] [class*="bg-slate-950"], html[data-theme="light"] [class*="bg-slate-900"] { background-color: rgba(231,237,248,.82) !important; }
+html[data-theme="light"] [class*="border-white/"] { border-color: rgba(54,65,91,.16) !important; }
+
 .card {
   position: relative;
   border: 1px solid var(--line);

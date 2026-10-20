@@ -1,7 +1,7 @@
 type PlanInput = {
   courses: Array<{ id: string; name: string; code: string; color: string }>;
   exams: Array<{ id: string; title: string; date: string; course_id: string; notes: string }>;
-  assignments: Array<{ id: string; title: string; due_date: string; course_id: string; priority: string }>;
+  assignments: Array<{ id: string; title: string; due_date: string; course_id: string; priority: string; is_completed?: number | boolean }>;
   sessions: Array<{ id: string; title: string; course_id: string; scheduled_at: string; status: string }>;
   settings: { start_hour: number; end_hour: number; revision_minutes: number; study_days: string };
 };
@@ -31,26 +31,33 @@ export function normalizeStudySettings(settings: Partial<PlanInput["settings"]> 
 export function buildStudyPlan(input: PlanInput, recoveryMode = false) {
   const normalizedSettings = normalizeStudySettings(input.settings);
   const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const parseDate = (value: string) => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+    return match
+      ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+      : new Date(value);
+  };
   const tasks = [
     ...input.exams.map((exam) => ({
       kind: "exam",
       id: exam.id,
       title: exam.title,
       courseId: exam.course_id,
-      dueDate: new Date(exam.date),
+      dueDate: parseDate(exam.date),
       priority: 100,
       reason: "Exam date is approaching and should be treated as the highest priority.",
     })),
-    ...input.assignments.map((assignment) => ({
+    ...input.assignments.filter((assignment) => !assignment.is_completed).map((assignment) => ({
       kind: "assignment",
       id: assignment.id,
       title: assignment.title,
       courseId: assignment.course_id,
-      dueDate: new Date(assignment.due_date),
+      dueDate: parseDate(assignment.due_date),
       priority: assignment.priority === "High" ? 85 : assignment.priority === "Medium" ? 70 : 55,
       reason: "Assignment deadline is approaching and requires revision time.",
     })),
-  ].filter((task) => !Number.isNaN(task.dueDate.getTime()) && task.dueDate >= now);
+  ].filter((task) => !Number.isNaN(task.dueDate.getTime()) && task.dueDate >= today);
 
   tasks.sort((left, right) => {
     if (left.dueDate.getTime() !== right.dueDate.getTime()) {

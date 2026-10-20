@@ -1,6 +1,7 @@
 import { saveSettings } from "@/lib/actions";
 import { getSettings } from "@/lib/db";
 import { AIStatus } from "@/components/ai-status";
+import { DataBackup } from "@/components/data-backup";
 
 export default async function SettingsPage() {
   const settings = getSettings();
@@ -13,6 +14,7 @@ export default async function SettingsPage() {
       </header>
 
       <section className="grid gap-6 xl:grid-cols-2">
+        <div className="xl:col-span-2"><DataBackup /></div>
         <div className="xl:col-span-2">
           <AIStatus />
         </div>
