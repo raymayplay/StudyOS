@@ -2,7 +2,7 @@ import { getCourses, getDocuments, getDocumentNotes, getDocumentQuestions, getDo
 import { DocumentReader } from "@/components/document-reader";
 import { LibraryVideoRecommendations } from "@/components/library-video-recommendations";
 import { ResourceUploadForm, ReanalyzeDocumentForm } from "@/components/resource-controls";
-import { OllamaStatus } from "@/components/ollama-status";
+import { AIStatus } from "@/components/ai-status";
 import Link from "next/link";
 
 export default async function ResourcesPage() {
@@ -15,11 +15,11 @@ export default async function ResourcesPage() {
         <p className="text-xs uppercase tracking-[0.24em] text-violet-300">Resources</p>
         <h2 className="mt-2 text-3xl font-semibold text-white">Smart document reader</h2>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-          Upload a PDF to read its extracted text, explore related resources, and let your local Ollama model generate summaries, study topics, answers, and notes.
+          Upload a PDF to read its extracted text, explore related resources, and let your selected AI provider generate summaries, study topics, answers, and notes.
         </p>
       </header>
 
-      <OllamaStatus />
+      <AIStatus />
 
       <LibraryVideoRecommendations pdfCount={documents.filter((document) => document.file_name.toLowerCase().endsWith(".pdf")).length} />
 

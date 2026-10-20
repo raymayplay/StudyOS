@@ -7,12 +7,12 @@ StudyOS is a local-first academic workspace for managing courses, deadlines, upl
 - Course, exam, and assignment management
 - Reminder center with assignment completion tracking
 - Calendar overview for academic deadlines
-- PDF text extraction and local Ollama-generated summaries and topic checklists
+- PDF text extraction and AI-generated summaries and topic checklists (Ollama, OpenAI, Anthropic, or Gemini)
 - AI learning recommendations that analyze every readable PDF and link topics to YouTube lesson searches
-- Ollama-grounded document questions, study notes, and deadline-aware study plans
+- AI-grounded document questions, study notes, and deadline-aware study plans
 - Browser deadline reminders (one day before and on the due date, while StudyOS is open)
 - Resource discovery links for YouTube and academic search
-- Clearly labeled deadline-based planner fallback when Ollama is unavailable
+- Clearly labeled deadline-based planner fallback when the AI provider is unavailable
 - Progress tracking with study sessions
 - SQLite persistence
 
@@ -66,7 +66,7 @@ The development and production servers listen on all network interfaces to suppo
 
 ## Local AI and reminders
 
-Install and start the [Ollama desktop app](https://ollama.com/download) on the **host computer** if you want local AI features. Download the default model once on that computer:
+Ollama is the default local provider. Install and start the [Ollama desktop app](https://ollama.com/download) on the **host computer** if you want private local AI features. Download the default model once on that computer:
 
 ```bash
 ollama pull qwen2.5:3b
@@ -74,7 +74,7 @@ ollama pull qwen2.5:3b
 
 StudyOS connects to Ollama at `http://127.0.0.1:11434` on the host. Browser devices do not need Ollama installed. If you install and run StudyOS independently on a second computer instead, that computer needs its own Ollama installation and model download to use AI features.
 
-Optionally create `.env.local` in the project folder to select a different local Ollama endpoint or installed model:
+To choose another local Ollama endpoint/model, or an API provider, configure `.env.local`. Set `AI_PROVIDER=ollama`, `openai`, `anthropic`, or `gemini`. For cloud providers, set the matching server-only API key (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `GEMINI_API_KEY`) and optionally its model variable. Keep API keys out of `NEXT_PUBLIC_*` variables. Example Ollama settings:
 
 ```dotenv
 OLLAMA_BASE_URL=http://127.0.0.1:11434
@@ -83,7 +83,7 @@ OLLAMA_MODEL=qwen2.5:3b
 
 Restart StudyOS after changing environment variables.
 
-From **Resources**, use **Recommend YouTube lessons** to analyze every readable PDF in the library, find connected academic topics, and generate focused YouTube search links. The links open search results, not pre-verified individual videos. AI inference and PDF analysis run on the configured Ollama computer. YouTube and academic search links require an internet connection when opened.
+From **Resources**, use **Recommend YouTube lessons** to analyze every readable PDF in the library, find connected academic topics, and generate focused YouTube search links. The links open search results, not pre-verified individual videos. AI inference runs through the configured provider; with a cloud provider, prompts and relevant PDF text are sent to that provider. YouTube and academic search links require an internet connection when opened.
 
 Browser reminders are checked while StudyOS is open and send alerts at 9:00 AM on the day before and the due date, after notification permission is granted. Browser notifications may require HTTPS on devices other than the host computer; plain HTTP on a LAN IP may not support them. They do not run when StudyOS is closed.
 

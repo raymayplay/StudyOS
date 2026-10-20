@@ -3,7 +3,8 @@
 import { useSyncExternalStore } from "react";
 import { RefreshCw, Server } from "lucide-react";
 
-type OllamaStatusData = {
+type AIStatusData = {
+  provider: string;
   connected: boolean;
   model: string;
   modelAvailable: boolean;
@@ -11,7 +12,7 @@ type OllamaStatusData = {
   error: string | null;
 };
 
-let currentStatus: OllamaStatusData | null = null;
+let currentStatus: AIStatusData | null = null;
 let isChecking = true;
 let pendingCheck: Promise<void> | null = null;
 const subscribers = new Set<() => void>();
@@ -22,7 +23,7 @@ function notifySubscribers() {
 
 function subscribe(subscriber: () => void) {
   subscribers.add(subscriber);
-  if (!currentStatus && !pendingCheck) void refreshOllamaStatus();
+  if (!currentStatus && !pendingCheck) void refreshAIStatus();
   return () => {
     subscribers.delete(subscriber);
   };
@@ -44,23 +45,24 @@ function getServerCheckingSnapshot() {
   return true;
 }
 
-async function refreshOllamaStatus() {
+async function refreshAIStatus() {
   if (pendingCheck) return pendingCheck;
   isChecking = true;
   notifySubscribers();
 
   pendingCheck = (async () => {
     try {
-      const response = await fetch("/api/ollama/status", { cache: "no-store" });
+      const response = await fetch("/api/ai/status", { cache: "no-store" });
       if (!response.ok) throw new Error(`Status check failed (HTTP ${response.status}).`);
-      currentStatus = await response.json() as OllamaStatusData;
+      currentStatus = await response.json() as AIStatusData;
     } catch (error) {
       currentStatus = {
         connected: false,
+        provider: "ollama",
         model: "qwen2.5:3b",
         modelAvailable: false,
         models: [],
-        error: error instanceof Error ? error.message : "Could not check the Ollama connection.",
+        error: error instanceof Error ? error.message : "Could not check the AI provider configuration.",
       };
     } finally {
       isChecking = false;
@@ -72,7 +74,7 @@ async function refreshOllamaStatus() {
   return pendingCheck;
 }
 
-export function OllamaStatus() {
+export function AIStatus() {
   const status = useSyncExternalStore(subscribe, getStatusSnapshot, getServerStatusSnapshot);
   const checking = useSyncExternalStore(subscribe, getCheckingSnapshot, getServerCheckingSnapshot);
 
@@ -88,16 +90,22 @@ export function OllamaStatus() {
             <Server className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-200">Private local AI</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-200">Selected AI provider</p>
             <h3 className="mt-1 text-lg font-semibold text-white">
-              {checking ? "Checking Ollama…" : ready ? `${status?.model} is ready` : "Ollama needs attention"}
+              {checking
+                ? `Checking ${status?.provider ?? "provider"}…`
+                : ready
+                  ? status?.provider === "ollama" ? `${status.model} is ready` : `${status?.provider} is configured`
+                  : `${status?.provider ?? "AI provider"} needs attention`}
             </h3>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">
               {checking
-                ? "Checking the local model service on this computer."
-                : ready
-                  ? `PDFs, questions, notes, and study plans run on this computer with ${status?.model}. No API key, account, or cloud upload is used.`
-                  : status?.error}
+                ? "Checking the selected provider configuration."
+                : ready && status?.provider === "ollama"
+                  ? `Requests run on this computer with ${status.model}. No API key is needed.`
+                  : ready
+                    ? `The ${status?.provider} API key is configured. StudyOS sends prompts to that provider when you request AI help; the key stays on the server.`
+                    : status?.error}
             </p>
             {!checking && status?.connected && !status.modelAvailable && status.models.length > 0 && (
               <p className="mt-2 text-xs text-slate-500">Installed models: {status.models.join(", ")}</p>
@@ -106,7 +114,7 @@ export function OllamaStatus() {
         </div>
         <button
           type="button"
-          onClick={() => void refreshOllamaStatus()}
+          onClick={() => void refreshAIStatus()}
           disabled={checking}
           className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-violet-400/40 hover:bg-white/[0.04]"
         >
@@ -114,7 +122,7 @@ export function OllamaStatus() {
           Check connection
         </button>
       </div>
-      {!checking && !ready && (
+      {!checking && !ready && status?.provider === "ollama" && (
         <p className="mt-4 rounded-xl border border-white/[0.06] bg-slate-950/40 px-3 py-3 text-xs leading-5 text-slate-300">
           Start the Ollama desktop app. If the model is missing, run <code className="rounded bg-slate-800 px-1.5 py-0.5 text-violet-200">ollama pull {status?.model || "qwen2.5:3b"}</code> in a terminal, then check again.
         </p>

@@ -26,7 +26,7 @@ export function LibraryVideoRecommendations({ pdfCount }: { pdfCount: number }) 
           </p>
           <h3 className="mt-2 text-xl font-semibold text-white">Learn across your whole PDF library</h3>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-            Ollama reads the extracted text from every PDF, finds connected topics, then builds focused YouTube lesson searches from those topics.
+            Your selected AI provider reads the extracted text from every PDF, finds connected topics, then builds focused YouTube lesson searches from those topics.
           </p>
         </div>
         <form action={action}>

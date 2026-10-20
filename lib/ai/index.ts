@@ -1,4 +1,11 @@
+import "server-only";
+
 import { z } from "zod";
+import { generateCompletion } from "@/lib/ai/providers";
+import type { AIMessage } from "@/lib/ai/providers";
+
+export { getAIConfig, getAIStatus } from "@/lib/ai/providers";
+export type { AIProviderName, AIStatusData } from "@/lib/ai/providers";
 
 const topicSchema = z.object({
   title: z.string().trim().min(1).max(100),
@@ -47,126 +54,14 @@ const videoRecommendationsSchema = z.object({
 export type DocumentAnalysis = z.infer<typeof documentAnalysisSchema>;
 export type LibraryVideoRecommendation = z.infer<typeof videoRecommendationSchema>;
 
-type ChatMessage = {
-  role: "system" | "user" | "assistant";
-  content: string;
-};
-
-export function getOllamaConfig() {
-  return {
-    baseUrl: (process.env.OLLAMA_BASE_URL?.trim() || "http://127.0.0.1:11434").replace(/\/+$/, ""),
-    model: process.env.OLLAMA_MODEL?.trim() || "qwen2.5:3b",
-  };
-}
-
-export async function getOllamaStatus() {
-  const { baseUrl, model } = getOllamaConfig();
-  try {
-    const response = await fetch(`${baseUrl}/api/tags`, {
-      signal: AbortSignal.timeout(3000),
-      cache: "no-store",
-    });
-    if (!response.ok) {
-      return { connected: false, model, modelAvailable: false, models: [], error: `Ollama returned HTTP ${response.status}.` };
-    }
-    const payload: unknown = await response.json();
-    const models =
-      typeof payload === "object" && payload !== null && "models" in payload && Array.isArray(payload.models)
-        ? payload.models.flatMap((item) =>
-            typeof item === "object" && item !== null && "name" in item && typeof item.name === "string"
-              ? [item.name]
-              : [],
-          )
-        : [];
-    const modelAvailable = models.some((installed) => installed === model || installed.startsWith(`${model}:`));
-    return {
-      connected: true,
-      model,
-      modelAvailable,
-      models,
-      error: modelAvailable ? null : `Model "${model}" is not installed.`,
-    };
-  } catch {
-    return {
-      connected: false,
-      model,
-      modelAvailable: false,
-      models: [],
-      error: `Ollama is not responding at ${baseUrl}. Start the Ollama app and try again.`,
-    };
-  }
-}
-
-async function requestCompletion(messages: ChatMessage[], json = false): Promise<string> {
-  const { baseUrl, model } = getOllamaConfig();
-  let response: Response;
-  try {
-    response = await fetch(`${baseUrl}/api/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model,
-        messages,
-        stream: false,
-        ...(json ? { format: "json" } : {}),
-        options: {
-          temperature: 0.2,
-          num_ctx: 8192,
-          num_predict: 3000,
-        },
-        keep_alive: "10m",
-      }),
-      signal: AbortSignal.timeout(180_000),
-      cache: "no-store",
-    });
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : "Connection failed";
-    throw new Error(`Could not connect to local Ollama at ${baseUrl}. Start the Ollama app and retry. (${reason})`);
-  }
-
-  const responseText = await response.text();
-  let payload: unknown;
-  try {
-    payload = JSON.parse(responseText);
-  } catch {
-    throw new Error(`Ollama returned an unreadable response (HTTP ${response.status}).`);
-  }
-
-  if (!response.ok) {
-    const modelError =
-      typeof payload === "object" &&
-      payload !== null &&
-      "error" in payload &&
-      typeof payload.error === "string"
-        ? payload.error
-        : response.statusText;
-    throw new Error(`Ollama request failed (HTTP ${response.status}): ${modelError}`);
-  }
-
-  const content =
-    typeof payload === "object" &&
-    payload !== null &&
-    "message" in payload &&
-    typeof payload.message === "object" &&
-    payload.message !== null &&
-    "content" in payload.message &&
-    typeof payload.message.content === "string"
-      ? payload.message.content.trim()
-      : "";
-
-  if (!content) {
-    throw new Error("Ollama returned an empty response.");
-  }
-
-  return content;
-}
+const requestCompletion = generateCompletion;
 
 export async function generateJson<T>(
   systemPrompt: string,
   userPrompt: string,
   schema: z.ZodType<T>,
 ): Promise<T> {
-  const messages: ChatMessage[] = [
+  const messages: AIMessage[] = [
     { role: "system", content: systemPrompt },
     { role: "user", content: userPrompt },
   ];
@@ -178,7 +73,7 @@ export async function generateJson<T>(
       parsed = JSON.parse(content);
     } catch {
       if (attempt === 1) {
-        throw new Error("Ollama returned invalid JSON for a structured response after a retry.");
+        throw new Error("The AI provider returned invalid JSON after a retry.");
       }
       content = await requestCompletion([
         ...messages,
@@ -191,7 +86,7 @@ export async function generateJson<T>(
     const result = schema.safeParse(parsed);
     if (result.success) return result.data;
     if (attempt === 1) {
-      throw new Error(`Ollama returned a structured response in the wrong format after a retry: ${result.error.message}`);
+      throw new Error(`The AI provider returned a response in the wrong format after a retry: ${result.error.message}`);
     }
 
     content = await requestCompletion([
@@ -201,7 +96,7 @@ export async function generateJson<T>(
     ], true);
   }
 
-  throw new Error("Ollama could not generate the requested structured response.");
+  throw new Error("The AI provider could not generate the requested structured response.");
 }
 
 export async function generateText(systemPrompt: string, userPrompt: string): Promise<string> {
@@ -357,7 +252,7 @@ export async function recommendLibraryVideos(
       );
       for (const concept of result.concepts) {
         if (concept.sourceDocuments.some((source) => !knownDocuments.has(source))) {
-          throw new Error(`Ollama returned an unknown PDF source for "${concept.topic}". Please retry.`);
+          throw new Error(`The AI provider returned an unknown PDF source for "${concept.topic}". Please retry.`);
         }
         reduced.push(concept);
       }
@@ -379,7 +274,7 @@ export async function recommendLibraryVideos(
 
   for (const recommendation of result.recommendations) {
     if (recommendation.sourceDocuments.some((source) => !knownDocuments.has(source))) {
-      throw new Error(`Ollama returned an unknown PDF source for "${recommendation.topic}". Please retry.`);
+      throw new Error(`The AI provider returned an unknown PDF source for "${recommendation.topic}". Please retry.`);
     }
   }
 

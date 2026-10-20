@@ -1,6 +1,6 @@
 import { saveSettings } from "@/lib/actions";
 import { getSettings } from "@/lib/db";
-import { OllamaStatus } from "@/components/ollama-status";
+import { AIStatus } from "@/components/ai-status";
 
 export default async function SettingsPage() {
   const settings = getSettings();
@@ -14,7 +14,7 @@ export default async function SettingsPage() {
 
       <section className="grid gap-6 xl:grid-cols-2">
         <div className="xl:col-span-2">
-          <OllamaStatus />
+          <AIStatus />
         </div>
         <div className="card rounded-3xl p-5">
           <h3 className="text-lg font-semibold text-white">Study windows</h3>
@@ -44,7 +44,7 @@ export default async function SettingsPage() {
         <div className="card rounded-3xl p-5">
           <h3 className="text-lg font-semibold text-white">Operational notes</h3>
           <ul className="mt-4 space-y-3 text-sm text-slate-300">
-            <li>• Ollama runs local AI for PDF analysis, document answers, notes, and deadline-aware study plans. No API key is needed.</li>
+            <li>• AI features use the provider selected in environment settings. Ollama runs locally; OpenAI, Anthropic, and Gemini send prompts to their configured services.</li>
             <li>• PDF text stays on this computer. Text extraction is local; scanned PDFs still require OCR.</li>
             <li>• Enable browser notifications to receive automatic deadline reminders while StudyOS remains open.</li>
             <li>• This local-only app stores data in SQLite and persists across refreshes and restarts.</li>

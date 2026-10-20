@@ -22,7 +22,7 @@ export default async function PlannerPage({
           <p className="text-xs uppercase tracking-[0.24em] text-violet-300">AI Study Room</p>
           <h2 className="mt-2 text-3xl font-semibold text-white">Deadline-aware study planner</h2>
           <p className="mt-2 text-sm text-slate-400">
-            {source === "ai" ? "Ollama plan based on your deadlines and uploaded PDF content." : "Local deadline-based plan."}
+            {source === "ai" ? "AI plan based on your deadlines and uploaded PDF content." : "Local deadline-based plan."}
           </p>
         </div>
         <div className="flex gap-2">

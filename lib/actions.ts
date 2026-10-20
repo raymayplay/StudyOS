@@ -8,11 +8,11 @@ import path from "node:path";
 import { db } from "@/lib/db";
 import {
   analyzeDocument,
-  generateDocumentNotes as generateNotesWithOllama,
+  generateDocumentNotes as generateNotesWithAI,
   generateText,
   recommendLibraryVideos,
   type LibraryVideoRecommendation,
-} from "@/lib/ollama";
+} from "@/lib/ai";
 import { getAIStudyPlan } from "@/lib/planning-ai";
 import { extractPdfText } from "@/lib/pdf";
 import { requireAuthenticatedAction } from "@/lib/auth";
@@ -553,7 +553,7 @@ export async function generateDocumentNotes(_previousState: string, formData: Fo
 
   let notes: string;
   try {
-    notes = await generateNotesWithOllama(document.extracted_text, document.file_name.replace(/\.[^.]+$/, ""));
+    notes = await generateNotesWithAI(document.extracted_text, document.file_name.replace(/\.[^.]+$/, ""));
   } catch (error) {
     return `Could not draft notes: ${error instanceof Error ? error.message : "Unknown AI error"}`;
   }

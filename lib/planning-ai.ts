@@ -11,7 +11,7 @@ import {
   getSettings,
   getStudySessions,
 } from "@/lib/db";
-import { generateJson, getOllamaConfig } from "@/lib/ollama";
+import { generateJson, getAIConfig } from "@/lib/ai";
 import { buildStudyPlan, normalizeStudySettings } from "@/lib/scheduler";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -179,9 +179,9 @@ export async function getAIStudyPlan(recoveryMode = false) {
       })),
     }));
 
-  const { model, baseUrl } = getOllamaConfig();
+  const { model, provider, endpoint } = getAIConfig();
   const inputHash = createHash("sha256")
-    .update(JSON.stringify({ today, timeZone, recoveryMode, model, baseUrl, normalizedSettings, courses, deadlines, sourceDocuments }))
+    .update(JSON.stringify({ today, timeZone, recoveryMode, provider, model, endpoint, normalizedSettings, courses, deadlines, sourceDocuments }))
     .digest("hex");
   const cached = db.prepare("SELECT plan_json FROM ai_plan_cache WHERE input_hash = ?").get(inputHash) as
     | { plan_json: string }

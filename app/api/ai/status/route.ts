@@ -1,4 +1,4 @@
-import { getOllamaStatus } from "@/lib/ollama";
+import { getAIStatus } from "@/lib/ai";
 import { hasValidSession } from "@/lib/auth";
 import { SESSION_COOKIE_NAME } from "@/lib/auth-crypto";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
       headers: { "Cache-Control": "no-store", "Retry-After": String(rateLimit.retryAfterSeconds) },
     });
   }
-  return Response.json(await getOllamaStatus(), {
+  return Response.json(await getAIStatus(), {
     headers: { "Cache-Control": "no-store" },
   });
 }

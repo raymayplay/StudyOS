@@ -101,7 +101,7 @@ export function DocumentReader({
                 name="question"
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
-                placeholder={aiAvailable ? "Ask for an explanation, definition, or key point…" : "Start Ollama to ask questions"}
+                placeholder={aiAvailable ? "Ask for an explanation, definition, or key point…" : "Configure your AI provider to ask questions"}
                 className={`${inputClassName} min-h-20 resize-y`}
                 required
                 disabled={!aiAvailable || !readableText || isAnswering}
