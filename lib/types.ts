@@ -25,6 +25,7 @@ export type Assignment = {
   due_date: string;
   priority: string;
   notes: string;
+  is_completed: number;
   created_at: string;
   updated_at: string;
 };
@@ -49,10 +50,19 @@ export type DocumentRecord = {
   file_name: string;
   file_path: string;
   status: string;
+  analysis_source: string;
   summary: string | null;
   extracted_text: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type DocumentQuestion = {
+  id: string;
+  document_id: string;
+  question: string;
+  answer: string;
+  created_at: string;
 };
 
 export type Topic = {

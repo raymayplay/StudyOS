@@ -16,6 +16,21 @@ StudyOS is a local-first academic workspace for managing courses, deadlines, upl
 - Progress tracking with study sessions
 - SQLite persistence
 
+## Screenshots
+
+Screenshots are maintained in [`docs/screenshots`](docs/screenshots) as the interface evolves.
+
+## Architecture overview
+
+- `app/` contains Next.js pages, authenticated API routes, and server actions.
+- `components/` contains the responsive client UI for navigation, PDF reading, charts, and controls.
+- `lib/db.ts` owns the local SQLite database and additive schema setup; `data/studyos.db` is local-only.
+- `lib/ai/` selects a server-side AI provider, chunks document text, caches summaries by SHA-256, and streams document answers.
+- `uploads/` stores PDFs on the host computer. Browser devices access the host over the network; they do not store a second copy.
+- `lib/scheduler.ts` provides a local deadline-based plan when AI is unavailable.
+
+Run `npm run lint`, `npm test`, and `npm run build` before committing changes.
+
 ## Run StudyOS on a new computer
 
 Install Git and Node.js 20.9 or newer (Node.js 22 LTS is recommended) on the computer that will run StudyOS. Then clone the GitHub repository, install the exact dependencies from the lockfile, and start the app:
@@ -64,6 +79,10 @@ The computer running StudyOS is the **host**. The host must remain powered on an
 
 The development and production servers listen on all network interfaces to support this local-network access. The host's IP can change when it reconnects; check it again if the saved URL stops working.
 
+## Use with Tailscale
+
+For remote access, install [Tailscale](https://tailscale.com/download) on the StudyOS host and the devices you use. Sign in to the same tailnet, then run `tailscale serve http://127.0.0.1:3000` on the host. Open the HTTPS address shown by `tailscale serve status` from another device. Set `STUDYOS_COOKIE_SECURE=true` in `.env.local` and restart StudyOS. Tailscale Serve keeps access within your tailnet; do not use Tailscale Funnel or expose port 3000 to the public internet. See the [Tailscale Serve CLI guide](https://tailscale.com/docs/reference/tailscale-cli/serve) for current command options.
+
 ## Local AI and reminders
 
 Ollama is the default local provider. Install and start the [Ollama desktop app](https://ollama.com/download) on the **host computer** if you want private local AI features. Download the default model once on that computer:
@@ -92,5 +111,5 @@ Browser reminders are checked while StudyOS is open and send alerts at 9:00 AM o
 - Data is stored in `data/studyos.db`.
 - Uploaded PDFs are saved under `uploads/`.
 - The database and uploaded files stay on the computer running StudyOS; connecting another device does not copy them there. Running a separate clone on a second computer starts with separate data. To move existing data, copy the `data` folder and `uploads` folder to the new computer while StudyOS is stopped; keep backups private.
-- StudyOS has no sign-in, per-user permissions, or multi-user isolation. Anyone who can reach the app on your network may view and change its data. Only run it on a trusted private network, and do not expose it to the public internet.
+- StudyOS uses one shared password for the whole instance. It has no per-user permissions or multi-user data isolation.
 - PDF uploads are limited to 25 MB per request.

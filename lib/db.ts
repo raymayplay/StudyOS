@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
+import type { Assignment, Course, DocumentQuestion, DocumentRecord, Exam, StudySession } from "@/lib/types";
 
 const dataDir = path.join(process.cwd(), "data");
 fs.mkdirSync(dataDir, { recursive: true });
@@ -123,6 +124,7 @@ db.exec(`
     plan_json TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
+
 `);
 
 const documentColumns = db.prepare("PRAGMA table_info(documents)").all() as Array<{ name: string }>;
@@ -152,34 +154,34 @@ for (const [key, value] of defaultSettings) {
 
 export function getSettings() {
   return Object.fromEntries(
-    db.prepare("SELECT key, value FROM app_settings").all().map((row: any) => [row.key, row.value]),
+    (db.prepare("SELECT key, value FROM app_settings").all() as Array<{ key: string; value: string }>).map((row) => [row.key, row.value]),
   ) as Record<string, string>;
 }
 
 export function getCourses() {
-  return db.prepare("SELECT * FROM courses ORDER BY created_at DESC").all() as any[];
+  return db.prepare("SELECT * FROM courses ORDER BY created_at DESC").all() as Course[];
 }
 
 export function getExams() {
-  return db.prepare("SELECT * FROM exams ORDER BY date ASC").all() as any[];
+  return db.prepare("SELECT * FROM exams ORDER BY date ASC").all() as Exam[];
 }
 
 export function getAssignments() {
-  return db.prepare("SELECT * FROM assignments ORDER BY due_date ASC").all() as any[];
+  return db.prepare("SELECT * FROM assignments ORDER BY due_date ASC").all() as Assignment[];
 }
 
 export function getDocuments() {
-  return db.prepare("SELECT * FROM documents ORDER BY created_at DESC").all() as any[];
+  return db.prepare("SELECT * FROM documents ORDER BY created_at DESC").all() as DocumentRecord[];
 }
 
 export function getStudySessions() {
-  return db.prepare("SELECT * FROM study_sessions ORDER BY scheduled_at ASC").all() as any[];
+  return db.prepare("SELECT * FROM study_sessions ORDER BY scheduled_at ASC").all() as StudySession[];
 }
 
 export function getDocumentQuestions(documentId: string) {
   return db
     .prepare("SELECT * FROM document_questions WHERE document_id = ? ORDER BY created_at DESC")
-    .all(documentId) as any[];
+    .all(documentId) as DocumentQuestion[];
 }
 
 export function getDocumentNotes(documentId: string) {

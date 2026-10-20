@@ -4,6 +4,7 @@ import { ArrowRight, CheckCircle2, Clock3, FileStack, GraduationCap, Sparkles } 
 import StudyChart from "@/components/study-chart";
 import { getDashboardData, getSettings } from "@/lib/db";
 import { getAIStudyPlan } from "@/lib/planning-ai";
+import { daysFromToday, isDueWithinDays } from "@/lib/deadlines";
 
 export const dynamic = "force-dynamic";
 
@@ -12,28 +13,15 @@ export default async function HomePage() {
   const settings = getSettings();
   const { plan, source, error: aiError } = await getAIStudyPlan();
 
-  const today = new Date();
-  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const deadlines = [
     ...data.exams.map((exam) => ({ id: exam.id, title: exam.title, dueDate: exam.date, type: "Exam" })),
     ...data.assignments
       .filter((assignment) => !assignment.is_completed)
       .map((assignment) => ({ id: assignment.id, title: assignment.title, dueDate: assignment.due_date, type: "Assignment" })),
   ].sort((left, right) => left.dueDate.localeCompare(right.dueDate));
-  const dueSoon = deadlines.filter((item) => {
-    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(item.dueDate);
-    const date = match
-      ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
-      : new Date(item.dueDate);
-    const daysAway = Math.ceil((date.getTime() - todayStart.getTime()) / 86_400_000);
-    return daysAway >= 0 && daysAway <= 7;
-  });
+  const dueSoon = deadlines.filter((item) => isDueWithinDays(item.dueDate, 7));
   const nextDeadline = deadlines.find((item) => {
-    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(item.dueDate);
-    const date = match
-      ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
-      : new Date(item.dueDate);
-    return date >= todayStart;
+    return daysFromToday(item.dueDate) >= 0;
   }) ?? deadlines.find((item) => item.type === "Assignment");
   const upcomingExams = deadlines.filter((item) => item.type === "Exam").slice(0, 3);
   const upcomingAssignments = deadlines.filter((item) => item.type === "Assignment").slice(0, 3);
