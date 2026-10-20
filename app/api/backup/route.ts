@@ -51,6 +51,7 @@ export async function POST(request: Request) {
   try {
     for (const row of documentRows) {
       const name = String(row.file_name ?? "");
+      if (db.prepare("SELECT 1 FROM documents WHERE id = ?").get(String(row.id ?? ""))) continue;
       const file = uploadById.get(String(row.id ?? ""));
       if (!file) continue;
       const bytes = Buffer.from(file.data, "base64");
