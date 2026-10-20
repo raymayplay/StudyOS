@@ -22,7 +22,7 @@ Screenshots are not included yet. Add sanitized dashboard and document-reader ca
 
 ## Architecture overview
 
-- `app/` contains Next.js pages, authenticated API routes, and server actions.
+- `app/` contains Next.js pages, API routes, and server actions.
 - `components/` contains the responsive client UI for navigation, PDF reading, charts, and controls.
 - `lib/db.ts` owns the local SQLite database and additive schema setup; `data/studyos.db` is local-only.
 - `lib/ai/` selects a server-side AI provider, chunks document text, caches summaries by SHA-256, and streams document answers.
@@ -43,19 +43,6 @@ npm run dev
 ```
 
 Open <http://localhost:3000> on that computer. `npm ci` installs the app's JavaScript and native SQLite dependencies; no global Next.js install is needed. Keep `package-lock.json` with the code and use `npm ci` when setting up or refreshing another computer.
-
-## Secure your StudyOS instance
-
-Before using StudyOS, create `.env.local` in the project folder and set a long, unique password and a random session signing secret:
-
-```dotenv
-STUDYOS_PASSWORD=choose-a-long-unique-password
-STUDYOS_SESSION_SECRET=replace-with-output-from-openssl-rand-base64-32
-```
-
-Generate a signing secret with `openssl rand -base64 32`. Restart StudyOS after saving the file. The app remains on its setup page until both values are present. Sign-in sessions expire after seven days, and StudyOS will ask you to sign in again. `.env.local`, the SQLite database, and uploaded PDFs are excluded from Git.
-
-For HTTPS behind a reverse proxy, ensure it forwards `X-Forwarded-Proto: https` so the session cookie is marked secure. You can also set `STUDYOS_COOKIE_SECURE=true` when HTTPS terminates outside StudyOS. Plain HTTP is suitable only for localhost or a trusted private network; use Tailscale HTTPS when accessing StudyOS remotely.
 
 To run a production build instead of the development server:
 
@@ -81,7 +68,7 @@ The development and production servers listen on all network interfaces to suppo
 
 ## Use with Tailscale
 
-For remote access, install [Tailscale](https://tailscale.com/download) on the StudyOS host and the devices you use. Sign in to the same tailnet, then run `tailscale serve http://127.0.0.1:3000` on the host. Open the HTTPS address shown by `tailscale serve status` from another device. Set `STUDYOS_COOKIE_SECURE=true` in `.env.local` and restart StudyOS. Tailscale Serve keeps access within your tailnet; do not use Tailscale Funnel or expose port 3000 to the public internet. See the [Tailscale Serve CLI guide](https://tailscale.com/docs/reference/tailscale-cli/serve) for current command options.
+For remote access, install [Tailscale](https://tailscale.com/download) on the StudyOS host and the devices you use. Sign in to the same tailnet, then run `tailscale serve http://127.0.0.1:3000` on the host. Open the HTTPS address shown by `tailscale serve status` from another device. Tailscale Serve keeps access within your tailnet; do not use Tailscale Funnel or expose port 3000 to the public internet. See the [Tailscale Serve CLI guide](https://tailscale.com/docs/reference/tailscale-cli/serve) for current command options.
 
 ## Local AI and reminders
 
@@ -111,5 +98,5 @@ Browser reminders are checked while StudyOS is open and send alerts at 9:00 AM o
 - Data is stored in `data/studyos.db`.
 - Uploaded PDFs are saved under `uploads/`.
 - The database and uploaded files stay on the computer running StudyOS; connecting another device does not copy them there. Running a separate clone on a second computer starts with separate data. To move existing data, copy the `data` folder and `uploads` folder to the new computer while StudyOS is stopped; keep backups private.
-- StudyOS uses one shared password for the whole instance. It has no per-user permissions or multi-user data isolation.
+- StudyOS has no sign-in or per-user permissions. Keep it on your device or a trusted private network.
 - PDF uploads are limited to 25 MB per request.

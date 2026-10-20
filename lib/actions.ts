@@ -15,11 +15,9 @@ import {
 import { getAIStudyPlan } from "@/lib/planning-ai";
 import { extractPdfText } from "@/lib/pdf";
 import { getCachedDocumentAnalysis, hashDocument, saveCachedDocumentAnalysis } from "@/lib/ai/cache";
-import { requireAuthenticatedAction } from "@/lib/auth";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
 export async function createCourse(formData: FormData) {
-  await requireAuthenticatedAction();
   const name = String(formData.get("name") || "").trim();
   const code = String(formData.get("code") || "").trim();
   const description = String(formData.get("description") || "").trim();
@@ -39,7 +37,6 @@ export async function createCourse(formData: FormData) {
 }
 
 export async function updateCourse(formData: FormData) {
-  await requireAuthenticatedAction();
   const id = String(formData.get("id") || "");
   const name = String(formData.get("name") || "").trim();
   const code = String(formData.get("code") || "").trim();
@@ -61,7 +58,6 @@ export async function updateCourse(formData: FormData) {
 }
 
 export async function deleteCourse(formData: FormData) {
-  await requireAuthenticatedAction();
   const id = String(formData.get("id") || "");
   if (!id) return;
   db.prepare("DELETE FROM courses WHERE id = ?").run(id);
@@ -70,7 +66,6 @@ export async function deleteCourse(formData: FormData) {
 }
 
 export async function createExam(formData: FormData) {
-  await requireAuthenticatedAction();
   const courseId = String(formData.get("course_id") || "");
   const title = String(formData.get("title") || "").trim();
   const date = String(formData.get("date") || "");
@@ -92,7 +87,6 @@ export async function createExam(formData: FormData) {
 }
 
 export async function updateExam(formData: FormData) {
-  await requireAuthenticatedAction();
   const id = String(formData.get("id") || "");
   const courseId = String(formData.get("course_id") || "");
   const title = String(formData.get("title") || "").trim();
@@ -112,7 +106,6 @@ export async function updateExam(formData: FormData) {
 }
 
 export async function deleteExam(formData: FormData) {
-  await requireAuthenticatedAction();
   const id = String(formData.get("id") || "");
   if (!id) return;
   db.prepare("DELETE FROM exams WHERE id = ?").run(id);
@@ -123,7 +116,6 @@ export async function deleteExam(formData: FormData) {
 }
 
 export async function createAssignment(formData: FormData) {
-  await requireAuthenticatedAction();
   const courseId = String(formData.get("course_id") || "");
   const title = String(formData.get("title") || "").trim();
   const dueDate = String(formData.get("due_date") || "");
@@ -146,7 +138,6 @@ export async function createAssignment(formData: FormData) {
 }
 
 export async function updateAssignment(formData: FormData) {
-  await requireAuthenticatedAction();
   const id = String(formData.get("id") || "");
   const courseId = String(formData.get("course_id") || "");
   const title = String(formData.get("title") || "").trim();
@@ -167,7 +158,6 @@ export async function updateAssignment(formData: FormData) {
 }
 
 export async function deleteAssignment(formData: FormData) {
-  await requireAuthenticatedAction();
   const id = String(formData.get("id") || "");
   if (!id) return;
   db.prepare("DELETE FROM assignments WHERE id = ?").run(id);
@@ -178,7 +168,6 @@ export async function deleteAssignment(formData: FormData) {
 }
 
 export async function setAssignmentCompletion(id: string, completed: boolean) {
-  await requireAuthenticatedAction();
   if (!id || typeof completed !== "boolean") return;
   db.prepare(
     "UPDATE assignments SET is_completed = ?, updated_at = datetime('now') WHERE id = ?",
@@ -208,7 +197,6 @@ function sanitizeStudySettings(formData: FormData) {
 }
 
 export async function saveSettings(formData: FormData) {
-  await requireAuthenticatedAction();
   const settings = sanitizeStudySettings(formData);
 
   const upsert = db.prepare(
@@ -222,7 +210,6 @@ export async function saveSettings(formData: FormData) {
 }
 
 export async function createStudySession(formData: FormData) {
-  await requireAuthenticatedAction();
   const courseId = String(formData.get("course_id") || "");
   const title = String(formData.get("title") || "").trim();
   const topic = String(formData.get("topic") || "").trim();
@@ -245,7 +232,6 @@ export async function createStudySession(formData: FormData) {
 }
 
 export async function completeStudySession(formData: FormData) {
-  await requireAuthenticatedAction();
   const id = String(formData.get("id") || "");
   const confidenceInput = Number(formData.get("confidence") || 3);
   const confidence = Number.isFinite(confidenceInput) ? Math.min(Math.max(Math.round(confidenceInput), 1), 5) : 3;
@@ -274,7 +260,6 @@ export async function generateLibraryVideoRecommendations(
   _previousState: LibraryVideoRecommendationsState,
   _formData: FormData,
 ): Promise<LibraryVideoRecommendationsState> {
-  await requireAuthenticatedAction();
   enforceRateLimit("ai");
   void _previousState;
   void _formData;
@@ -332,7 +317,6 @@ export async function generateLibraryVideoRecommendations(
 }
 
 export async function uploadDocument(_previousState: string, formData: FormData): Promise<string> {
-  await requireAuthenticatedAction();
   enforceRateLimit("ai");
   const courseId = String(formData.get("course_id") || "");
   const file = formData.get("file");
@@ -429,7 +413,6 @@ async function analyzeAndSaveDocument(documentId: string, documentName: string, 
 }
 
 export async function reanalyzeDocument(_previousState: string, formData: FormData): Promise<string> {
-  await requireAuthenticatedAction();
   enforceRateLimit("ai");
   const documentId = String(formData.get("document_id") || "");
   if (!documentId) return "Could not find this document.";
@@ -470,7 +453,6 @@ export async function reanalyzeDocument(_previousState: string, formData: FormDa
 }
 
 export async function saveDocumentNotes(_previousState: string, formData: FormData): Promise<string> {
-  await requireAuthenticatedAction();
   const documentId = String(formData.get("document_id") || "");
   const notes = String(formData.get("notes") || "").trim().slice(0, 50000);
   if (!documentId || !db.prepare("SELECT 1 FROM documents WHERE id = ?").get(documentId)) {
@@ -488,7 +470,6 @@ export async function saveDocumentNotes(_previousState: string, formData: FormDa
 }
 
 export async function generateDocumentNotes(_previousState: string, formData: FormData): Promise<string> {
-  await requireAuthenticatedAction();
   enforceRateLimit("ai");
   const documentId = String(formData.get("document_id") || "");
   if (!documentId) return "Choose a document before drafting notes.";
@@ -517,7 +498,6 @@ export async function generateDocumentNotes(_previousState: string, formData: Fo
 }
 
 export async function buildPlannerData() {
-  await requireAuthenticatedAction();
   enforceRateLimit("ai");
   const { plan } = await getAIStudyPlan();
   return plan;

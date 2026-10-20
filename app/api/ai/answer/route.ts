@@ -3,8 +3,6 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 
 import { streamCompletion } from "@/lib/ai";
-import { hasValidSession } from "@/lib/auth";
-import { SESSION_COOKIE_NAME } from "@/lib/auth-crypto";
 import { db } from "@/lib/db";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -16,10 +14,6 @@ const requestSchema = z.object({
   question: z.string().trim().min(1).max(1000),
   sourceExcerpt: z.string().max(3000).optional().default(""),
 });
-
-function sessionCookie(request: Request) {
-  return request.headers.get("cookie")?.split(";").map((value) => value.trim()).find((value) => value.startsWith(`${SESSION_COOKIE_NAME}=`))?.slice(SESSION_COOKIE_NAME.length + 1);
-}
 
 function selectPassages(text: string, question: string, excerpt: string) {
   if (excerpt && text.includes(excerpt)) return [excerpt];
@@ -40,9 +34,6 @@ function selectPassages(text: string, question: string, excerpt: string) {
 }
 
 export async function POST(request: Request) {
-  if (!(await hasValidSession(sessionCookie(request)))) {
-    return Response.json({ error: "Your StudyOS session has expired. Sign in again." }, { status: 401 });
-  }
   const rateLimit = checkRateLimit("ai-answer", Number(process.env.AI_RATE_LIMIT_MAX || 20), Number(process.env.AI_RATE_LIMIT_WINDOW_MS || 60_000));
   if (!rateLimit.allowed) {
     return Response.json({ error: `Too many AI requests. Try again in ${rateLimit.retryAfterSeconds} seconds.` }, {

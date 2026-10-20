@@ -3,20 +3,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import { cookies } from "next/headers";
 import { db } from "@/lib/db";
-import { hasValidSession } from "@/lib/auth";
-import { SESSION_COOKIE_NAME } from "@/lib/auth-crypto";
 
 export const runtime = "nodejs";
 const tables = ["courses", "exams", "assignments", "documents", "topics", "resources", "study_sessions", "document_questions", "document_notes", "app_settings"] as const;
 
-async function authorized() {
-  return hasValidSession((await cookies()).get(SESSION_COOKIE_NAME)?.value);
-}
-
 export async function GET() {
-  if (!(await authorized())) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   const backup: Record<string, unknown> = { format: "studyos-backup", version: 1, exportedAt: new Date().toISOString(), tables: {}, uploads: [] };
   const rows: Record<string, unknown> = {};
   for (const table of tables) rows[table] = db.prepare(`SELECT * FROM ${table}`).all();
@@ -31,7 +23,6 @@ export async function GET() {
 const backupSchema = z.object({ format: z.literal("studyos-backup"), version: z.literal(1), tables: z.record(z.string(), z.array(z.record(z.string(), z.unknown()))), uploads: z.array(z.object({ documentId: z.string(), fileName: z.string(), data: z.string() })).default([]) });
 
 export async function POST(request: Request) {
-  if (!(await authorized())) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   const length = Number(request.headers.get("content-length") || 0);
   if (length > 100 * 1024 * 1024) return NextResponse.json({ error: "Backup exceeds the 100 MB import limit." }, { status: 413 });
   let raw: unknown;
