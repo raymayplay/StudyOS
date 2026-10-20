@@ -3,31 +3,22 @@ import { ArrowRight, CheckCircle2, Clock3, FileStack, GraduationCap, Sparkles } 
 
 import StudyChart from "@/components/study-chart";
 import { getDashboardData, getSettings } from "@/lib/db";
-import { buildStudyPlan } from "@/lib/scheduler";
+import { getAIStudyPlan } from "@/lib/planning-ai";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const data = getDashboardData();
   const settings = getSettings();
-  const plan = buildStudyPlan({
-    courses: data.courses,
-    exams: data.exams,
-    assignments: data.assignments,
-    sessions: data.sessions,
-    settings: {
-      study_days: settings.study_days || "Mon,Tue,Wed,Thu,Fri",
-      start_hour: Number(settings.start_hour || 9),
-      end_hour: Number(settings.end_hour || 18),
-      revision_minutes: Number(settings.revision_minutes || 45),
-    },
-  });
+  const { plan, source, error: aiError } = await getAIStudyPlan();
 
   const today = new Date();
   const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const deadlines = [
     ...data.exams.map((exam) => ({ id: exam.id, title: exam.title, dueDate: exam.date, type: "Exam" })),
-    ...data.assignments.map((assignment) => ({ id: assignment.id, title: assignment.title, dueDate: assignment.due_date, type: "Assignment" })),
+    ...data.assignments
+      .filter((assignment) => !assignment.is_completed)
+      .map((assignment) => ({ id: assignment.id, title: assignment.title, dueDate: assignment.due_date, type: "Assignment" })),
   ].sort((left, right) => left.dueDate.localeCompare(right.dueDate));
   const dueSoon = deadlines.filter((item) => {
     const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(item.dueDate);
@@ -57,6 +48,14 @@ export default async function HomePage() {
             <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.26em] text-violet-200"><Sparkles className="h-3.5 w-3.5" /> StudyOS / Dashboard</p>
             <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">Your study command center</h2>
             <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">A clear view of your workload, with a practical next step based on what is coming up.</p>
+            <p className="mt-2 text-xs text-slate-400">
+              {source === "ai" ? "Local AI plan tailored to your deadlines and uploaded course material." : "Using the local deadline planner."}
+            </p>
+            {aiError && (
+              <p role="status" className="mt-2 max-w-xl text-xs leading-5 text-amber-200">
+                AI planning is unavailable: {aiError}
+              </p>
+            )}
           </div>
           <Link href="/planner" className="relative inline-flex items-center justify-center gap-2 self-start rounded-xl bg-gradient-to-r from-violet-500 to-indigo-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-950/40 transition hover:brightness-110 lg:self-auto">
             Generate study plan <ArrowRight className="h-4 w-4" />
@@ -147,12 +146,15 @@ export default async function HomePage() {
         </div>
 
         <div className="card rounded-3xl p-5">
-          <h3 className="text-lg font-semibold text-white">Upcoming assignments</h3>
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-white">Upcoming assignments</h3>
+            <Link href="/reminders" className="text-xs font-medium text-violet-300 hover:text-violet-200">Reminder center →</Link>
+          </div>
           <div className="mt-4 space-y-3">
-            {data.assignments.length === 0 ? (
+            {data.assignments.filter((assignment) => !assignment.is_completed).length === 0 ? (
               <p className="text-sm text-slate-400">No assignment deadlines saved yet.</p>
             ) : (
-              data.assignments.slice(0, 3).map((assignment) => (
+              data.assignments.filter((assignment) => !assignment.is_completed).slice(0, 3).map((assignment) => (
                 <div key={assignment.id} className="rounded-2xl border border-white/10 bg-slate-900/60 p-3">
                   <div className="flex items-center justify-between gap-3">
                     <strong className="text-white">{assignment.title}</strong>

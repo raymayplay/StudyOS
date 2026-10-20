@@ -2,8 +2,8 @@ import Link from "next/link";
 import { AlertTriangle, Sparkles } from "lucide-react";
 
 import { saveSettings } from "@/lib/actions";
-import { getAssignments, getCourses, getExams, getSettings, getStudySessions } from "@/lib/db";
-import { buildStudyPlan } from "@/lib/scheduler";
+import { getSettings } from "@/lib/db";
+import { getAIStudyPlan } from "@/lib/planning-ai";
 
 export default async function PlannerPage({
   searchParams,
@@ -13,25 +13,7 @@ export default async function PlannerPage({
   const params = (await searchParams) ?? {};
   const recoveryMode = params.recovery === "true";
   const settings = getSettings();
-  const courses = getCourses();
-  const exams = getExams();
-  const assignments = getAssignments();
-  const sessions = getStudySessions();
-  const plan = buildStudyPlan(
-    {
-      courses,
-      exams,
-      assignments,
-      sessions,
-      settings: {
-        study_days: settings.study_days || "Mon,Tue,Wed,Thu,Fri",
-        start_hour: Number(settings.start_hour || 9),
-        end_hour: Number(settings.end_hour || 18),
-        revision_minutes: Number(settings.revision_minutes || 45),
-      },
-    },
-    recoveryMode,
-  );
+  const { plan, source, error: aiError } = await getAIStudyPlan(recoveryMode);
 
   return (
     <div className="space-y-8">
@@ -39,12 +21,21 @@ export default async function PlannerPage({
         <div>
           <p className="text-xs uppercase tracking-[0.24em] text-violet-300">AI Study Room</p>
           <h2 className="mt-2 text-3xl font-semibold text-white">Deadline-aware study planner</h2>
+          <p className="mt-2 text-sm text-slate-400">
+            {source === "ai" ? "Ollama plan based on your deadlines and uploaded PDF content." : "Local deadline-based plan."}
+          </p>
         </div>
         <div className="flex gap-2">
           <Link href="/planner" className="rounded-full border border-white/15 px-3 py-2 text-sm text-slate-200 hover:bg-white/5">Standard</Link>
           <Link href="/planner?recovery=true" className="rounded-full bg-violet-500 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-400">Recovery mode</Link>
         </div>
       </header>
+
+      {aiError && (
+        <div role="status" className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+          AI planning is unavailable, so this is the local fallback plan: {aiError}
+        </div>
+      )}
 
       <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <div className="card rounded-3xl p-5">

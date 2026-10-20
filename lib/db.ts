@@ -43,6 +43,7 @@ db.exec(`
     due_date TEXT NOT NULL,
     priority TEXT NOT NULL DEFAULT 'Medium',
     notes TEXT DEFAULT '',
+    is_completed INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
@@ -54,6 +55,7 @@ db.exec(`
     file_name TEXT NOT NULL,
     file_path TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'queued',
+    analysis_source TEXT NOT NULL DEFAULT 'legacy',
     summary TEXT,
     extracted_text TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -115,7 +117,23 @@ db.exec(`
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE
   );
+
+  CREATE TABLE IF NOT EXISTS ai_plan_cache (
+    input_hash TEXT PRIMARY KEY,
+    plan_json TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
 `);
+
+const documentColumns = db.prepare("PRAGMA table_info(documents)").all() as Array<{ name: string }>;
+if (!documentColumns.some((column) => column.name === "analysis_source")) {
+  db.exec("ALTER TABLE documents ADD COLUMN analysis_source TEXT NOT NULL DEFAULT 'legacy'");
+}
+const assignmentColumns = db.prepare("PRAGMA table_info(assignments)").all() as Array<{ name: string }>;
+if (!assignmentColumns.some((column) => column.name === "is_completed")) {
+  db.exec("ALTER TABLE assignments ADD COLUMN is_completed INTEGER NOT NULL DEFAULT 0");
+}
+db.prepare("UPDATE documents SET analysis_source = 'ai' WHERE analysis_source IN ('openai', 'ollama')").run();
 
 const defaultSettings = [
   ["study_days", "Mon,Tue,Wed,Thu,Fri"],
@@ -168,6 +186,24 @@ export function getDocumentNotes(documentId: string) {
   return db
     .prepare("SELECT notes FROM document_notes WHERE document_id = ?")
     .get(documentId) as { notes: string } | undefined;
+}
+
+export type DocumentTopic = {
+  id: string;
+  title: string;
+  description: string;
+  difficulty: string;
+};
+
+export function getDocumentTopics(documentId: string): DocumentTopic[] {
+  const document = db.prepare("SELECT analysis_source FROM documents WHERE id = ?").get(documentId) as
+    | { analysis_source: string }
+    | undefined;
+  if (document?.analysis_source !== "ai") return [];
+
+  return db
+    .prepare("SELECT id, title, description, difficulty FROM topics WHERE document_id = ? ORDER BY created_at")
+    .all(documentId) as DocumentTopic[];
 }
 
 export function getDashboardData() {

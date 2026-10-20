@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
 import { answerQuestion, generateDocumentNotes, saveDocumentNotes } from "@/lib/actions";
 
 type DocumentQuestion = {
@@ -16,6 +16,7 @@ type DocumentReaderProps = {
   extractedText: string;
   notes: string;
   questions: DocumentQuestion[];
+  aiAvailable: boolean;
 };
 
 const inputClassName =
@@ -27,9 +28,13 @@ export function DocumentReader({
   extractedText,
   notes,
   questions,
+  aiAvailable,
 }: DocumentReaderProps) {
   const [selectedPassage, setSelectedPassage] = useState("");
   const [question, setQuestion] = useState("");
+  const [answerState, answerAction, isAnswering] = useActionState(answerQuestion, "");
+  const [notesState, notesAction, isDrafting] = useActionState(generateDocumentNotes, "");
+  const [saveState, saveAction, isSaving] = useActionState(saveDocumentNotes, "");
 
   function captureSelection() {
     const selection = window.getSelection()?.toString().trim() || "";
@@ -48,7 +53,7 @@ export function DocumentReader({
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-violet-300">Smart reader</p>
-          <p className="mt-1 text-xs text-slate-400">Select a passage to ask a source-grounded question.</p>
+          <p className="mt-1 text-xs text-slate-400">Select a passage or ask about the whole PDF.</p>
         </div>
         <span className="rounded-full border border-white/10 px-2.5 py-1 text-xs text-slate-400">
           {readableText ? `${readableText.split(/\s+/).length.toLocaleString()} words` : "No extracted text"}
@@ -89,22 +94,24 @@ export function DocumentReader({
                 “{selectedPassage}”
               </blockquote>
             )}
-            <form action={answerQuestion} className="mt-3 space-y-2">
+            <form action={answerAction} className="mt-3 space-y-2">
               <input type="hidden" name="document_id" value={documentId} />
               <input type="hidden" name="source_excerpt" value={selectedPassage} />
               <textarea
                 name="question"
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
-                placeholder="Ask for an explanation, definition, or key point…"
+                placeholder={aiAvailable ? "Ask for an explanation, definition, or key point…" : "Start Ollama to ask questions"}
                 className={`${inputClassName} min-h-20 resize-y`}
                 required
+                disabled={!aiAvailable || !readableText || isAnswering}
               />
               <div className="flex flex-wrap gap-2">
                 {["Explain simply", "Key points", "Define a term"].map((prompt) => (
                   <button
                     key={prompt}
                     type="button"
+                    disabled={!aiAvailable || !readableText}
                     onClick={() =>
                       setQuestion(
                         prompt === "Explain simply"
@@ -122,10 +129,12 @@ export function DocumentReader({
               </div>
               <button
                 type="submit"
+                disabled={!aiAvailable || !readableText || isAnswering}
                 className="w-full rounded-xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400"
               >
-                Ask using document
+                {isAnswering ? "Asking…" : "Ask using document"}
               </button>
+              {answerState && <p aria-live="polite" className="text-xs leading-5 text-violet-200">{answerState}</p>}
             </form>
 
             {questions.length > 0 && (
@@ -146,17 +155,19 @@ export function DocumentReader({
                 <h4 className="text-sm font-semibold text-white">Study notes</h4>
                 <p className="mt-1 text-xs text-slate-400">Draft from the PDF, edit, then save.</p>
               </div>
-              <form action={generateDocumentNotes}>
+              <form action={notesAction}>
                 <input type="hidden" name="document_id" value={documentId} />
                 <button
                   type="submit"
+                  disabled={!aiAvailable || !readableText || isDrafting}
                   className="rounded-full border border-violet-400/30 bg-violet-500/10 px-3 py-1.5 text-xs font-medium text-violet-200 hover:bg-violet-500/20"
                 >
-                  Draft notes
+                  {isDrafting ? "Drafting…" : "Draft notes"}
                 </button>
               </form>
             </div>
-            <form action={saveDocumentNotes} className="mt-3 space-y-2">
+            {notesState && <p aria-live="polite" className="mt-2 text-xs text-violet-200">{notesState}</p>}
+            <form action={saveAction} className="mt-3 space-y-2">
               <input type="hidden" name="document_id" value={documentId} />
               <textarea
                 name="notes"
@@ -167,10 +178,12 @@ export function DocumentReader({
               />
               <button
                 type="submit"
+                disabled={isSaving}
                 className="w-full rounded-xl border border-white/10 bg-slate-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
               >
-                Save notes
+                {isSaving ? "Saving…" : "Save notes"}
               </button>
+              {saveState && <p aria-live="polite" className="text-xs text-violet-200">{saveState}</p>}
             </form>
           </div>
         </aside>

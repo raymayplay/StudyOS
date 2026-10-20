@@ -9,6 +9,7 @@ import {
   updateCourse,
   updateExam,
 } from "@/lib/actions";
+import { AssignmentCompletion } from "@/components/assignment-completion";
 import { getAssignments, getCourses, getExams } from "@/lib/db";
 
 export default async function CoursesPage() {
@@ -137,6 +138,10 @@ export default async function CoursesPage() {
         <div className="mt-4 space-y-4">
           {assignments.map((assignment) => (
             <div key={assignment.id} className="rounded-2xl border border-white/10 bg-slate-900/50 p-3">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <span className={`font-medium ${assignment.is_completed ? "text-slate-400 line-through" : "text-white"}`}>{assignment.title}</span>
+                <AssignmentCompletion id={assignment.id} title={assignment.title} completed={Boolean(assignment.is_completed)} />
+              </div>
               <form action={updateAssignment} className="space-y-2">
                 <input type="hidden" name="id" value={assignment.id} />
                 <select name="course_id" defaultValue={assignment.course_id} className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-white">

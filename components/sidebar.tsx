@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, ChartColumnBig, Compass, LayoutDashboard, NotebookText, Settings, Sparkles } from "lucide-react";
+import { BellRing, CalendarDays, ChartColumnBig, Compass, LayoutDashboard, NotebookText, Settings, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -8,6 +8,7 @@ const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/courses", label: "My Courses", icon: NotebookText },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
+  { href: "/reminders", label: "Reminders", icon: BellRing },
   { href: "/planner", label: "AI Study Room", icon: Sparkles },
   { href: "/resources", label: "Resources", icon: Compass },
   { href: "/progress", label: "Progress", icon: ChartColumnBig },
