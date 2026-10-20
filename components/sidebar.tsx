@@ -3,6 +3,7 @@
 import { BellRing, CalendarDays, ChartColumnBig, Compass, LayoutDashboard, NotebookText, Settings, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { logoutAction } from "@/lib/session-actions";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -51,6 +52,12 @@ export default function Sidebar() {
           );
         })}
       </nav>
+
+      <form action={logoutAction} className="mt-3">
+        <button type="submit" className="w-full rounded-xl border border-white/10 px-3 py-2.5 text-left text-xs font-medium text-slate-400 transition hover:border-white/20 hover:bg-white/[0.04] hover:text-white md:text-sm">
+          Sign out
+        </button>
+      </form>
 
       <div className="mt-8 hidden overflow-hidden rounded-2xl border border-violet-400/15 bg-gradient-to-br from-violet-500/[0.12] via-indigo-500/[0.06] to-cyan-500/[0.08] p-4 md:block">
         <div className="mb-2 flex items-center gap-2 text-violet-200">

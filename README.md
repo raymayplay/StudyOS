@@ -29,6 +29,19 @@ npm run dev
 
 Open <http://localhost:3000> on that computer. `npm ci` installs the app's JavaScript and native SQLite dependencies; no global Next.js install is needed. Keep `package-lock.json` with the code and use `npm ci` when setting up or refreshing another computer.
 
+## Secure your StudyOS instance
+
+Before using StudyOS, create `.env.local` in the project folder and set a long, unique password and a random session signing secret:
+
+```dotenv
+STUDYOS_PASSWORD=choose-a-long-unique-password
+STUDYOS_SESSION_SECRET=replace-with-output-from-openssl-rand-base64-32
+```
+
+Generate a signing secret with `openssl rand -base64 32`. Restart StudyOS after saving the file. The app remains on its setup page until both values are present. Sign-in sessions expire after seven days, and StudyOS will ask you to sign in again. `.env.local`, the SQLite database, and uploaded PDFs are excluded from Git.
+
+For HTTPS behind a reverse proxy, ensure it forwards `X-Forwarded-Proto: https` so the session cookie is marked secure. You can also set `STUDYOS_COOKIE_SECURE=true` when HTTPS terminates outside StudyOS. Plain HTTP is suitable only for localhost or a trusted private network; use Tailscale HTTPS when accessing StudyOS remotely.
+
 To run a production build instead of the development server:
 
 ```bash

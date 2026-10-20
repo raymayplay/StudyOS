@@ -13,6 +13,7 @@ import {
 } from "@/lib/db";
 import { generateJson, getOllamaConfig } from "@/lib/ollama";
 import { buildStudyPlan, normalizeStudySettings } from "@/lib/scheduler";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const recommendationSchema = z.object({
   deadlineId: z.string().min(1),
@@ -66,6 +67,7 @@ type AssignmentRecord = {
   course_id: string;
   priority: string;
   notes: string;
+  is_completed: number;
 };
 
 type DocumentRecord = {
@@ -146,7 +148,7 @@ export async function getAIStudyPlan(recoveryMode = false) {
       priority: 100,
       notes: exam.notes || "",
     })),
-    ...assignments.map((assignment) => ({
+    ...assignments.filter((assignment) => !assignment.is_completed).map((assignment) => ({
       id: assignment.id,
       kind: "assignment" as const,
       title: assignment.title,
@@ -187,6 +189,15 @@ export async function getAIStudyPlan(recoveryMode = false) {
 
   if (cached) {
     return { plan: cachedPlanSchema.parse(JSON.parse(cached.plan_json)), source: "ai" as const, error: null };
+  }
+
+  const rateLimit = checkRateLimit("ai-planning", Number(process.env.AI_RATE_LIMIT_MAX || 20), Number(process.env.AI_RATE_LIMIT_WINDOW_MS || 60_000));
+  if (!rateLimit.allowed) {
+    return {
+      plan: fallbackPlan,
+      source: "local" as const,
+      error: `AI planning is temporarily rate limited. Try again in ${rateLimit.retryAfterSeconds} seconds.`,
+    };
   }
 
   let result: z.infer<typeof recommendationsSchema>;
