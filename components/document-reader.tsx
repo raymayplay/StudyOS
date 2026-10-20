@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { answerQuestion, generateDocumentNotes, saveDocumentNotes } from "@/lib/actions";
+import { useActionState, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { generateDocumentNotes, saveDocumentNotes } from "@/lib/actions";
 
 type DocumentQuestion = {
   id: string;
@@ -32,7 +33,10 @@ export function DocumentReader({
 }: DocumentReaderProps) {
   const [selectedPassage, setSelectedPassage] = useState("");
   const [question, setQuestion] = useState("");
-  const [answerState, answerAction, isAnswering] = useActionState(answerQuestion, "");
+  const [answer, setAnswer] = useState("");
+  const [answerError, setAnswerError] = useState("");
+  const [isAnswering, setIsAnswering] = useState(false);
+  const router = useRouter();
   const [notesState, notesAction, isDrafting] = useActionState(generateDocumentNotes, "");
   const [saveState, saveAction, isSaving] = useActionState(saveDocumentNotes, "");
 
@@ -44,6 +48,62 @@ export function DocumentReader({
   function askAboutSelection() {
     if (!selectedPassage) return;
     setQuestion("Explain this selected passage in simple terms.");
+  }
+
+  async function submitQuestion(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const questionText = question.trim();
+    if (!questionText || isAnswering) return;
+
+    setIsAnswering(true);
+    setAnswer("");
+    setAnswerError("");
+    try {
+      const response = await fetch("/api/ai/answer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documentId, question: questionText, sourceExcerpt: selectedPassage }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null) as { error?: string } | null;
+        throw new Error(payload?.error || `AI request failed (HTTP ${response.status}).`);
+      }
+      if (!response.body) throw new Error("The AI response stream did not start.");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let completed = false;
+      function processEvent(block: string) {
+        const lines = block.split("\n");
+        const eventName = lines.find((line) => line.startsWith("event:"))?.slice(6).trim();
+        const data = lines.filter((line) => line.startsWith("data:")).map((line) => line.slice(5).trimStart()).join("\n");
+        if (!data) return;
+        const payload = JSON.parse(data) as { text?: string; error?: string };
+        if (eventName === "token" && payload.text) setAnswer((current) => current + payload.text);
+        if (eventName === "error") throw new Error(payload.error || "The AI response was interrupted.");
+        if (eventName === "done") completed = true;
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+        buffer += decoder.decode(value, { stream: !done }).replace(/\r\n/g, "\n");
+        let boundary = buffer.indexOf("\n\n");
+        while (boundary >= 0) {
+          const block = buffer.slice(0, boundary);
+          buffer = buffer.slice(boundary + 2);
+          processEvent(block);
+          boundary = buffer.indexOf("\n\n");
+        }
+        if (done) break;
+      }
+      if (!completed) throw new Error("The AI response ended before it was saved. Please retry.");
+      router.refresh();
+    } catch (error) {
+      setAnswerError(error instanceof Error ? error.message : "Could not get an AI answer. Please retry.");
+    } finally {
+      setIsAnswering(false);
+    }
   }
 
   const readableText = extractedText.trim();
@@ -94,13 +154,11 @@ export function DocumentReader({
                 “{selectedPassage}”
               </blockquote>
             )}
-            <form action={answerAction} className="mt-3 space-y-2">
-              <input type="hidden" name="document_id" value={documentId} />
-              <input type="hidden" name="source_excerpt" value={selectedPassage} />
+            <form onSubmit={submitQuestion} aria-busy={isAnswering} className="mt-3 space-y-2">
               <textarea
-                name="question"
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
+                aria-label="Question about the selected document"
                 placeholder={aiAvailable ? "Ask for an explanation, definition, or key point…" : "Configure your AI provider to ask questions"}
                 className={`${inputClassName} min-h-20 resize-y`}
                 required
@@ -134,7 +192,13 @@ export function DocumentReader({
               >
                 {isAnswering ? "Asking…" : "Ask using document"}
               </button>
-              {answerState && <p aria-live="polite" className="text-xs leading-5 text-violet-200">{answerState}</p>}
+              {answer && (
+                <article aria-live="polite" className="rounded-xl border border-white/10 bg-slate-900/70 p-3">
+                  <p className="text-xs font-semibold text-violet-200">{isAnswering ? "Answering…" : "Answer"}</p>
+                  <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-slate-200">{answer}</p>
+                </article>
+              )}
+              {answerError && <p role="alert" className="text-xs leading-5 text-rose-200">{answerError}</p>}
             </form>
 
             {questions.length > 0 && (

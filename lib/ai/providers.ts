@@ -16,6 +16,7 @@ export type AIProviderAdapter = {
   name: AIProviderName;
   model: string;
   generate(messages: AIMessage[], json: boolean): Promise<string>;
+  stream(messages: AIMessage[], signal?: AbortSignal): AsyncIterable<string>;
 };
 
 const providerNames: AIProviderName[] = ["ollama", "openai", "anthropic", "gemini"];
@@ -68,7 +69,7 @@ async function fetchWithRetry(
     try {
       const response = await fetch(url, {
         ...init,
-        signal: AbortSignal.timeout(timeoutMs),
+        signal: init.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(timeoutMs)]) : AbortSignal.timeout(timeoutMs),
         cache: "no-store",
       });
       if (response.ok) return response;
@@ -96,6 +97,91 @@ async function parseJsonResponse(response: Response, provider: string) {
     return await response.json() as unknown;
   } catch {
     throw new Error(`${provider} returned an unreadable response.`);
+  }
+}
+
+type StreamParser = (payload: unknown) => string | null;
+
+async function* readEventStream(response: Response, provider: string, parse: StreamParser): AsyncIterable<string> {
+  if (!response.body) throw new Error(`${provider} opened an empty response stream.`);
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      buffer += decoder.decode(value, { stream: !done }).replace(/\r\n/g, "\n");
+      let boundary = buffer.indexOf("\n\n");
+      while (boundary >= 0) {
+        const event = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+        const data = event.split("\n").filter((line) => line.startsWith("data:")).map((line) => line.slice(5).trimStart()).join("\n");
+        if (data === "[DONE]") return;
+        if (data) {
+          let payload: unknown;
+          try {
+            payload = JSON.parse(data);
+          } catch {
+            throw new Error(`${provider} sent an unreadable streaming response.`);
+          }
+          if (typeof payload === "object" && payload !== null && "type" in payload && payload.type === "error") {
+            throw new Error(`${provider} stopped while generating the response. Try again.`);
+          }
+          const text = parse(payload);
+          if (text) yield text;
+        }
+        boundary = buffer.indexOf("\n\n");
+      }
+      if (done) break;
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+async function* readLineStream(response: Response, provider: string, parse: StreamParser): AsyncIterable<string> {
+  if (!response.body) throw new Error(`${provider} opened an empty response stream.`);
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      buffer += decoder.decode(value, { stream: !done });
+      const lines = buffer.split(/\r?\n/);
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        let payload: unknown;
+        try {
+          payload = JSON.parse(line);
+        } catch {
+          throw new Error(`${provider} sent an unreadable streaming response.`);
+        }
+        if (typeof payload === "object" && payload !== null && "error" in payload) {
+          throw new Error(`${provider} stopped while generating the response. Try again.`);
+        }
+        const text = parse(payload);
+        if (text) yield text;
+      }
+      if (done) {
+        if (buffer.trim()) {
+          let payload: unknown;
+          try {
+            payload = JSON.parse(buffer);
+          } catch {
+            throw new Error(`${provider} sent an unreadable streaming response.`);
+          }
+          const text = parse(payload);
+          if (text) yield text;
+        }
+        break;
+      }
+    }
+  } finally {
+    reader.releaseLock();
   }
 }
 
@@ -145,6 +231,19 @@ async function ollamaCompletion(messages: AIMessage[], json: boolean, model: str
   return payload.message.content.trim();
 }
 
+async function* ollamaStream(messages: AIMessage[], model: string, endpoint: string, signal?: AbortSignal) {
+  const response = await fetchWithRetry(`${endpoint}/api/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model, messages, stream: true, options: { temperature: 0.2, num_ctx: 8192, num_predict: 3000 }, keep_alive: "10m" }),
+    signal,
+  }, "Ollama");
+  yield* readLineStream(response, "Ollama", (payload) => {
+    if (typeof payload !== "object" || payload === null || !("message" in payload) || typeof payload.message !== "object" || payload.message === null || !("content" in payload.message) || typeof payload.message.content !== "string") return null;
+    return payload.message.content;
+  });
+}
+
 async function openAICompletion(messages: AIMessage[], json: boolean, model: string) {
   const apiKey = getApiKey("openai");
   if (!apiKey) throw new Error("OpenAI is selected, but OPENAI_API_KEY is missing from .env.local.");
@@ -154,6 +253,22 @@ async function openAICompletion(messages: AIMessage[], json: boolean, model: str
     body: JSON.stringify({ model, messages, ...(json ? { response_format: { type: "json_object" } } : {}) }),
   }, "OpenAI");
   return readOpenAIText(await parseJsonResponse(response, "OpenAI"));
+}
+
+async function* openAIStream(messages: AIMessage[], model: string, signal?: AbortSignal) {
+  const apiKey = getApiKey("openai");
+  if (!apiKey) throw new Error("OpenAI is selected, but OPENAI_API_KEY is missing from .env.local.");
+  const response = await fetchWithRetry("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model, messages, stream: true }),
+    signal,
+  }, "OpenAI");
+  yield* readEventStream(response, "OpenAI", (payload) => {
+    if (typeof payload !== "object" || payload === null || !("choices" in payload) || !Array.isArray(payload.choices)) return null;
+    const first = payload.choices[0];
+    return typeof first === "object" && first !== null && "delta" in first && typeof first.delta === "object" && first.delta !== null && "content" in first.delta && typeof first.delta.content === "string" ? first.delta.content : null;
+  });
 }
 
 async function anthropicCompletion(messages: AIMessage[], json: boolean, model: string) {
@@ -173,6 +288,22 @@ async function anthropicCompletion(messages: AIMessage[], json: boolean, model: 
   return readAnthropicText(await parseJsonResponse(response, "Anthropic"));
 }
 
+async function* anthropicStream(messages: AIMessage[], model: string, signal?: AbortSignal) {
+  const apiKey = getApiKey("anthropic");
+  if (!apiKey) throw new Error("Anthropic is selected, but ANTHROPIC_API_KEY is missing from .env.local.");
+  const system = messages.filter((message) => message.role === "system").map((message) => message.content).join("\n\n");
+  const response = await fetchWithRetry("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+    body: JSON.stringify({ model, max_tokens: 4096, system, messages: messages.filter((message) => message.role !== "system"), stream: true }),
+    signal,
+  }, "Anthropic");
+  yield* readEventStream(response, "Anthropic", (payload) => {
+    if (typeof payload !== "object" || payload === null || !("type" in payload) || payload.type !== "content_block_delta" || !("delta" in payload) || typeof payload.delta !== "object" || payload.delta === null || !("text" in payload.delta) || typeof payload.delta.text !== "string") return null;
+    return payload.delta.text;
+  });
+}
+
 async function geminiCompletion(messages: AIMessage[], json: boolean, model: string) {
   const apiKey = getApiKey("gemini");
   if (!apiKey) throw new Error("Gemini is selected, but GEMINI_API_KEY is missing from .env.local.");
@@ -189,6 +320,23 @@ async function geminiCompletion(messages: AIMessage[], json: boolean, model: str
   return readGeminiText(await parseJsonResponse(response, "Gemini"));
 }
 
+async function* geminiStream(messages: AIMessage[], model: string, signal?: AbortSignal) {
+  const apiKey = getApiKey("gemini");
+  if (!apiKey) throw new Error("Gemini is selected, but GEMINI_API_KEY is missing from .env.local.");
+  const systemInstruction = messages.filter((message) => message.role === "system").map((message) => message.content).join("\n\n");
+  const response = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: systemInstruction }] },
+      contents: messages.filter((message) => message.role !== "system").map((message) => ({ role: message.role === "assistant" ? "model" : "user", parts: [{ text: message.content }] })),
+      generationConfig: { temperature: 0.2 },
+    }),
+    signal,
+  }, "Gemini");
+  yield* readEventStream(response, "Gemini", readGeminiText);
+}
+
 export function getAIProviderAdapter(): AIProviderAdapter {
   const config = getAIConfig();
   if (!providerNames.includes(config.provider)) {
@@ -198,6 +346,13 @@ export function getAIProviderAdapter(): AIProviderAdapter {
   return {
     name,
     model: config.model,
+    stream: (messages, signal) => name === "ollama"
+      ? ollamaStream(messages, config.model, config.endpoint, signal)
+      : name === "openai"
+        ? openAIStream(messages, config.model, signal)
+        : name === "anthropic"
+          ? anthropicStream(messages, config.model, signal)
+          : geminiStream(messages, config.model, signal),
     generate: (messages, json) => name === "ollama"
       ? ollamaCompletion(messages, json, config.model, config.endpoint)
       : name === "openai"
@@ -212,6 +367,10 @@ export async function generateCompletion(messages: AIMessage[], json = false) {
   const result = await getAIProviderAdapter().generate(messages, json);
   if (!result) throw new Error(`${getAIConfig().provider} returned an empty response. Try again or select a different model.`);
   return result;
+}
+
+export function streamCompletion(messages: AIMessage[], signal?: AbortSignal) {
+  return getAIProviderAdapter().stream(messages, signal);
 }
 
 export async function getAIStatus(): Promise<AIStatusData> {

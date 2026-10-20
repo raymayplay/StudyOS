@@ -4,7 +4,7 @@ import { z } from "zod";
 import { generateCompletion } from "@/lib/ai/providers";
 import type { AIMessage } from "@/lib/ai/providers";
 
-export { getAIConfig, getAIStatus } from "@/lib/ai/providers";
+export { getAIConfig, getAIStatus, streamCompletion } from "@/lib/ai/providers";
 export type { AIProviderName, AIStatusData } from "@/lib/ai/providers";
 
 const topicSchema = z.object({

@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       // Allow multipart framing overhead; the action still caps the actual PDF at 25 MiB.
-      bodySizeLimit: "26mb",
+      bodySizeLimit: "27mb",
     },
   },
   serverExternalPackages: ["pdfjs-dist"],
