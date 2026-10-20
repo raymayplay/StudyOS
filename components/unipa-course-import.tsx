@@ -11,9 +11,26 @@ type ImportedCourse = {
   code: string;
   description: string;
   color: string;
+  meetings: Array<{ dayOfWeek: number; startTime: string; endTime: string; location: string; instructor: string }>;
 };
 
 const colors = ["#8b5cf6", "#0ea5e9", "#10b981", "#f59e0b", "#f43f5e", "#14b8a6"];
+const dayMatchers: Array<[RegExp, number]> = [
+  [/(sun|sunday|日)/i, 0], [/(mon|monday|月)/i, 1], [/(tue|tuesday|火)/i, 2], [/(wed|wednesday|水)/i, 3], [/(thu|thursday|木)/i, 4], [/(fri|friday|金)/i, 5], [/(sat|saturday|土)/i, 6],
+];
+
+function parseMeeting(details: string) {
+  const dayOfWeek = dayMatchers.find(([pattern]) => pattern.test(details))?.[1];
+  const time = /(\d{1,2}):(\d{2})\s*(?:-|–|—|to|〜|~)\s*(\d{1,2}):(\d{2})/i.exec(details);
+  if (dayOfWeek === undefined || !time) return [];
+  return [{
+    dayOfWeek,
+    startTime: `${time[1].padStart(2, "0")}:${time[2]}`,
+    endTime: `${time[3].padStart(2, "0")}:${time[4]}`,
+    location: "",
+    instructor: "",
+  }];
+}
 
 function parseUnipaCourses(value: string): ImportedCourse[] {
   const rows = value
@@ -34,12 +51,14 @@ function parseUnipaCourses(value: string): ImportedCourse[] {
     if (!name) return [];
     const code = hasCode ? codeCandidate : `UNIPA-${index + 1}`;
     const detailCells = cells.filter((_, cellIndex) => cellIndex !== nameIndex && cellIndex !== (hasCode ? (leadingNumber ? 1 : 0) : -1));
+    const description = detailCells.join(" · ").slice(0, 800);
     return [{
       key: `${code}-${name}-${index}`,
       name: name.slice(0, 160),
       code: code.slice(0, 80),
-      description: detailCells.join(" · ").slice(0, 800),
+      description,
       color: colors[index % colors.length],
+      meetings: parseMeeting(description),
     }];
   });
 }
@@ -70,7 +89,7 @@ export function UnipaCourseImport() {
         <textarea value={pasted} onChange={(event) => updatePasted(event.target.value)} placeholder={"Course code\tCourse name\tInstructor\tDay / period\tRoom\nDATA100\tIntroduction to Computer Science\tParida\tTue 3\tLecture Theater"} className="mt-2 min-h-32 w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white placeholder:text-slate-500" />
       </label>
       {courses.length > 0 && <form action={action} className="mt-4">
-        <input type="hidden" name="courses" value={JSON.stringify(chosenCourses.map((course) => ({ name: course.name, code: course.code, description: course.description, color: course.color })))} />
+        <input type="hidden" name="courses" value={JSON.stringify(chosenCourses.map((course) => ({ name: course.name, code: course.code, description: course.description, color: course.color, meetings: course.meetings })))} />
         <div className="max-h-72 space-y-2 overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/25 p-3">
           {courses.map((course) => <label key={course.key} className="flex cursor-pointer items-start gap-3 rounded-xl px-2 py-2 hover:bg-white/5">
             <input type="checkbox" checked={selected.has(course.key)} onChange={() => setSelected((current) => {
@@ -79,7 +98,7 @@ export function UnipaCourseImport() {
               else next.add(course.key);
               return next;
             })} className="mt-1 h-4 w-4 accent-violet-500" />
-            <span className="min-w-0"><span className="block font-medium text-white">{course.name}</span><span className="block text-xs text-slate-400">{course.code}{course.description ? ` · ${course.description}` : ""}</span></span>
+            <span className="min-w-0"><span className="block font-medium text-white">{course.name}</span><span className="block text-xs text-slate-400">{course.code}{course.description ? ` · ${course.description}` : ""}{course.meetings.length ? ` · time detected: ${course.meetings[0].startTime}–${course.meetings[0].endTime}` : ""}</span></span>
           </label>)}
         </div>
         <button type="submit" disabled={pending || chosenCourses.length === 0} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-400"><Plus className="h-4 w-4" />{pending ? "Importing…" : `Add ${chosenCourses.length} selected class${chosenCourses.length === 1 ? "" : "es"}`}</button>

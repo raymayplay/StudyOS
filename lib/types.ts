@@ -8,6 +8,18 @@ export type Course = {
   updated_at: string;
 };
 
+export type CourseMeeting = {
+  id: string;
+  course_id: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  location: string;
+  instructor: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Exam = {
   id: string;
   course_id: string;

@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
-import type { Assignment, Course, DocumentQuestion, DocumentRecord, Exam, StudySession } from "@/lib/types";
+import type { Assignment, Course, CourseMeeting, DocumentQuestion, DocumentRecord, Exam, StudySession } from "@/lib/types";
 
 const dataDir = path.join(process.cwd(), "data");
 fs.mkdirSync(dataDir, { recursive: true });
@@ -103,6 +103,19 @@ db.exec(`
     FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
   );
 
+  CREATE TABLE IF NOT EXISTS course_meetings (
+    id TEXT PRIMARY KEY,
+    course_id TEXT NOT NULL,
+    day_of_week INTEGER NOT NULL CHECK(day_of_week BETWEEN 0 AND 6),
+    start_time TEXT NOT NULL,
+    end_time TEXT NOT NULL,
+    location TEXT NOT NULL DEFAULT '',
+    instructor TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+  );
+
   CREATE TABLE IF NOT EXISTS document_questions (
     id TEXT PRIMARY KEY,
     document_id TEXT NOT NULL,
@@ -176,6 +189,10 @@ export function getDocuments() {
 
 export function getStudySessions() {
   return db.prepare("SELECT * FROM study_sessions ORDER BY scheduled_at ASC").all() as StudySession[];
+}
+
+export function getCourseMeetings() {
+  return db.prepare("SELECT * FROM course_meetings ORDER BY day_of_week, start_time, end_time").all() as CourseMeeting[];
 }
 
 export function getDocumentQuestions(documentId: string) {
