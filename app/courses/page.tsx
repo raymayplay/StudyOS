@@ -10,6 +10,7 @@ import {
   updateExam,
 } from "@/lib/actions";
 import { AssignmentCompletion } from "@/components/assignment-completion";
+import { UnipaCourseImport } from "@/components/unipa-course-import";
 import { getAssignments, getCourses, getExams } from "@/lib/db";
 
 export default async function CoursesPage() {
@@ -53,6 +54,8 @@ export default async function CoursesPage() {
         </div>
       </section>
 
+      <UnipaCourseImport />
+
       <section className="grid gap-6 xl:grid-cols-2">
         <div className="card rounded-3xl p-5">
           <h3 className="text-lg font-semibold text-white">Course library</h3>
@@ -93,9 +96,9 @@ export default async function CoursesPage() {
               </select>
               <input name="title" placeholder="Assignment title" className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-white placeholder:text-slate-500" required />
               <input type="date" name="due_date" className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-white" required />
-              <select name="priority" className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-white">
+              <select name="priority" defaultValue="Medium" className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-white">
                 <option value="High">High</option>
-                <option value="Medium" selected>Medium</option>
+                <option value="Medium">Medium</option>
                 <option value="Low">Low</option>
               </select>
               <textarea name="notes" placeholder="Notes" className="min-h-[80px] w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-white placeholder:text-slate-500" />

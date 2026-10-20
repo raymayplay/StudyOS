@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { z } from "zod";
 
 import { db } from "@/lib/db";
 import {
@@ -16,6 +17,10 @@ import { getAIStudyPlan } from "@/lib/planning-ai";
 import { extractPdfText } from "@/lib/pdf";
 import { getCachedDocumentAnalysis, hashDocument, saveCachedDocumentAnalysis } from "@/lib/ai/cache";
 import { enforceRateLimit } from "@/lib/rate-limit";
+
+function revalidateCourseViews() {
+  ["/", "/courses", "/calendar", "/planner", "/progress", "/reminders", "/resources"].forEach((route) => revalidatePath(route));
+}
 
 export async function createCourse(formData: FormData) {
   const name = String(formData.get("name") || "").trim();
@@ -32,8 +37,7 @@ export async function createCourse(formData: FormData) {
      VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
   ).run(randomUUID(), name, code, description, color);
 
-  revalidatePath("/");
-  revalidatePath("/courses");
+  revalidateCourseViews();
 }
 
 export async function updateCourse(formData: FormData) {
@@ -53,16 +57,59 @@ export async function updateCourse(formData: FormData) {
      WHERE id = ?`,
   ).run(name, code, description, color, id);
 
-  revalidatePath("/");
-  revalidatePath("/courses");
+  revalidateCourseViews();
 }
 
 export async function deleteCourse(formData: FormData) {
   const id = String(formData.get("id") || "");
   if (!id) return;
   db.prepare("DELETE FROM courses WHERE id = ?").run(id);
-  revalidatePath("/");
-  revalidatePath("/courses");
+  revalidateCourseViews();
+}
+
+const importedCourseSchema = z.object({
+  name: z.string().trim().min(1).max(160),
+  code: z.string().trim().min(1).max(80),
+  description: z.string().trim().max(800).default(""),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#8b5cf6"),
+});
+
+const importedCoursesSchema = z.array(importedCourseSchema).min(1).max(40);
+
+export async function importCourses(_previousState: string, formData: FormData): Promise<string> {
+  const raw = String(formData.get("courses") || "");
+  let courses: z.infer<typeof importedCoursesSchema>;
+  try {
+    courses = importedCoursesSchema.parse(JSON.parse(raw));
+  } catch {
+    return "Choose at least one valid course to import.";
+  }
+
+  const existing = new Set(
+    (db.prepare("SELECT code, name FROM courses").all() as Array<{ code: string; name: string }>)
+      .map((course) => `${course.code.trim().toLowerCase()}\u0000${course.name.trim().toLowerCase()}`),
+  );
+  const insert = db.prepare(
+    `INSERT INTO courses (id, name, code, description, color, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+  );
+  let imported = 0;
+  let skipped = 0;
+  const addCourses = db.transaction(() => {
+    for (const course of courses) {
+      const key = `${course.code.toLowerCase()}\u0000${course.name.toLowerCase()}`;
+      if (existing.has(key)) {
+        skipped += 1;
+        continue;
+      }
+      insert.run(randomUUID(), course.name, course.code, course.description, course.color);
+      existing.add(key);
+      imported += 1;
+    }
+  });
+  addCourses();
+  revalidateCourseViews();
+  return `Imported ${imported} course${imported === 1 ? "" : "s"}${skipped ? `; skipped ${skipped} duplicate${skipped === 1 ? "" : "s"}.` : "."}`;
 }
 
 export async function createExam(formData: FormData) {
