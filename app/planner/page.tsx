@@ -4,6 +4,7 @@ import { AlertTriangle, Sparkles } from "lucide-react";
 import { saveSettings } from "@/lib/actions";
 import { getSettings } from "@/lib/db";
 import { getAIStudyPlan } from "@/lib/planning-ai";
+import { ResourcesLibrary } from "@/components/resources-library";
 
 export default async function PlannerPage({
   searchParams,
@@ -19,10 +20,10 @@ export default async function PlannerPage({
     <div className="space-y-8">
       <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.24em] text-violet-300">AI Study Room</p>
-          <h2 className="mt-2 text-3xl font-semibold text-white">Deadline-aware study planner</h2>
+          <p className="text-xs uppercase tracking-[0.24em] text-violet-300">AI Study Room · Planner & Resources</p>
+          <h2 className="mt-2 text-3xl font-semibold text-white">Your complete study space</h2>
           <p className="mt-2 text-sm text-slate-400">
-            {source === "ai" ? "AI plan based on your deadlines and uploaded PDF content." : "Local deadline-based plan."}
+            {source === "ai" ? "Study plans, PDF library, AI tutor, notes, and lesson searches in one place." : "Your local deadline-based plan, PDF library, AI tutor, notes, and lesson searches."}
           </p>
         </div>
         <div className="flex gap-2">
@@ -91,6 +92,8 @@ export default async function PlannerPage({
           ))}
         </div>
       </section>
+
+      <ResourcesLibrary />
     </div>
   );
 }

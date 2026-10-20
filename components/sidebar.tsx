@@ -1,6 +1,6 @@
 "use client";
 
-import { BellRing, CalendarDays, ChartColumnBig, Clock3, Compass, LayoutDashboard, NotebookText, Settings, Sparkles } from "lucide-react";
+import { BellRing, CalendarDays, ChartColumnBig, Clock3, LayoutDashboard, NotebookText, Settings, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -12,7 +12,6 @@ const navItems = [
   { href: "/timetable", label: "Timetable", icon: Clock3 },
   { href: "/reminders", label: "Reminders", icon: BellRing },
   { href: "/planner", label: "AI Study Room", icon: Sparkles },
-  { href: "/resources", label: "Resources", icon: Compass },
   { href: "/progress", label: "Progress", icon: ChartColumnBig },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
