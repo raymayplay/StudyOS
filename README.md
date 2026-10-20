@@ -18,7 +18,7 @@ StudyOS is a local-first academic workspace for managing courses, deadlines, upl
 
 ## Screenshots
 
-Screenshots are maintained in [`docs/screenshots`](docs/screenshots) as the interface evolves.
+Screenshots are not included yet. Add sanitized dashboard and document-reader captures under `docs/screenshots/` when available.
 
 ## Architecture overview
 
